@@ -67,14 +67,16 @@ import shaper.Shaper_Sphere;
  * @version 2.3.2 - 05.09.2013: Added skyboxes and the cylinder shaper
  * @version 2.3.3 - 09.09.2013: Added split mode
  * @version 2.3.4 - 13.09.2013: Moved skybox into JAR, renamed project to SoundBites
+ * @version 2.3.5 - 13.09.2013: Added complete removal of GUI
  * 
  */
 public class SoundBites extends PApplet
 {
-    public static final String VERSION = "2.3.4";
+    public static final String VERSION = "2.3.5";
     
     // permanent GUI controls
     private ControlP5     gui;
+    private boolean       guiEnabled;
     private Textlabel     lblFilename;
     private Button        btnRenderMode;
     private Toggle        btnPause, btnSplit;
@@ -120,7 +122,8 @@ public class SoundBites extends PApplet
         frameRate(60);
 
         gui = new ControlP5(this);
-
+        guiEnabled = true;
+        
         objRotX = 30;
         objRotY = 0;
         cameraPos = new PVector(0, 0, 700);
@@ -349,6 +352,8 @@ public class SoundBites extends PApplet
         lblFilename = gui.addTextlabel("filename", "Filename: ---")
                 .setPosition(guiSpacing, height - guiSizeY - guiSpacing)
                 .setSize(width - 20, 20);
+        
+        gui.setAutoDraw(false);
     }
 
     @Override
@@ -423,6 +428,11 @@ public class SoundBites extends PApplet
         {
             updateRealtimeSpectrum();
         }
+        
+        if ( guiEnabled )
+        {
+            gui.draw();
+        }
     }
 
     
@@ -481,6 +491,16 @@ public class SoundBites extends PApplet
         }
     }
 
+    @Override
+    public void keyPressed()
+    {
+        if ( key == 'g' )
+        {
+            guiEnabled = !guiEnabled;
+        }
+    }
+
+    
     public void toggleRenderMode()
     {
         String txtMode;
