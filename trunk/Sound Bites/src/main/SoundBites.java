@@ -2,6 +2,10 @@ package main;
 
 import analyser.SpectrumAnalyser;
 import analyser.SpectrumInfo;
+import com.illposed.osc.OSCListener;
+import com.illposed.osc.OSCMessage;
+import com.illposed.osc.OSCPort;
+import com.illposed.osc.OSCPortIn;
 import controlP5.Button;
 import controlP5.CallbackEvent;
 import controlP5.ControlEvent;
@@ -22,6 +26,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.net.SocketException;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import javax.media.opengl.GL2;
@@ -39,9 +45,11 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import processing.core.PApplet;
+import static processing.core.PApplet.println;
 import static processing.core.PConstants.DISABLE_DEPTH_TEST;
 import static processing.core.PConstants.ENABLE_DEPTH_TEST;
 import processing.core.PVector;
+import processing.event.MouseEvent;
 import shaper.ColourMapper;
 import shaper.ImageColourMapper;
 import shaper.PlainColourMapper;
@@ -66,54 +74,19 @@ import shaper.Shaper_Sphere;
  * @version 2.3.1 - 04.09.2013: Switched rendering to OpenGL 2
  * @version 2.3.2 - 05.09.2013: Added skyboxes and the cylinder shaper
  * @version 2.3.3 - 09.09.2013: Added split mode
- * @version 2.3.4 - 13.09.2013: Moved skybox into JAR, renamed project to SoundBites
+ * @version 2.3.4 - 13.09.2013: Moved skyboxes into JAR, renamed project to SoundBites
  * @version 2.3.5 - 13.09.2013: Added complete removal of GUI
+ * @version 2.3.6 - 13.09.2013: Added zoom and OSC support. 
  * 
  */
-public class SoundBites extends PApplet
+public class SoundBites extends PApplet implements OSCListener
 {
-    public static final String VERSION = "2.3.5";
+    public static final String VERSION = "2.3.6";
+         
     
-    // permanent GUI controls
-    private ControlP5     gui;
-    private boolean       guiEnabled;
-    private Textlabel     lblFilename;
-    private Button        btnRenderMode;
-    private Toggle        btnPause, btnSplit;
-    private DropdownList  lstInputs, lstShapers;
-    
-    private final int guiSizeY   = 20;
-    private final int guiSpacing = 10;
-
-    // object rotation
-    private float objRotX, objRotY;
-    
-    // spectrum data
-    private File spectrumFile;
-    private float[][] spectrumData;
-    
-    // Camera and skybox
-    private PVector cameraPos;
-    private Skybox  skybox;
-    
-    // the shaper module
-    private List<Shaper>      shaperList;
-    private Shaper            shaper;
-    private ColourMapper      mapper;
-    private PlainColourMapper mapperPlain;
-    
-    // timestamp to trigger recalculation
-    private long recomputeTime;
-    // some flags
-    private boolean    dragToRotate;
-    private RenderMode renderMode;
-
-    // live audio input
-    private List<Mixer.Info>  inputMixers;
-    private Minim             minim;
-    private SpectrumAnalyser  audioAnalyser;
-    private int               inputIdx;
-            
+    /**
+     * Sets up the program.
+     */
     @Override
     public void setup()
     {
@@ -126,7 +99,8 @@ public class SoundBites extends PApplet
         
         objRotX = 30;
         objRotY = 0;
-        cameraPos = new PVector(0, 0, 700);
+        cameraPos  = new PVector(0, 0, 700);
+        cameraZoom = 1.0f;
 
         skybox = new Skybox("/resources/skyboxes/SkyboxHexSphere.jpg", 2000);
         //skybox = new Skybox("/resources/skyboxes/SkyboxGridPlane.jpg", 2000);
@@ -172,37 +146,35 @@ public class SoundBites extends PApplet
         shaperList.add(new Shaper_Sphere());
         shaperList.add(new Shaper_Cylinder());
 
+        setupOSC();
         createGUI();
         selectAudioInput(inputMixers.get(0));
-        realtimeSpectrum();
+        selectRealtimeSpectrum();
         selectShaper(shaperList.get(0));
     }
 
-    void selectShaper(Shaper s)
+    
+    /**
+     * Sets up the OSC receiver.
+     */
+    void setupOSC()
     {
-        if (shaper != null)
+        try
         {
-            shaper.deinitialise();
+            oscReceiver = new OSCPortIn(OSCPort.defaultSCOSCPort());
+            oscReceiver.addListener(".*", this);
+            oscReceiver.startListening();
         }
-        
-        shaper = s;
-        
-        if ( shaper != null )
+        catch (SocketException e)
         {
-            shaper.initialise(gui);
-            shaper.setColourMapper(mapper);
-            int y = 10;
-            for ( Controller c : shaper.getControllers() )
-            {
-                c.setPosition(10, y);
-                c.setSize(200, 20);
-                y += 30;
-            }
-            shaper.createSurface(spectrumData);
-            lstShapers.setCaptionLabel("Shaper: " + shaper.getName());
+            System.err.println("Could not start OSC receiver (" + e + ")");
         }
     }
-
+    
+    
+    /**
+     * Creates the permanent GUI elements.
+     */
     void createGUI()
     {
         int yPos     = guiSpacing;
@@ -306,7 +278,7 @@ public class SoundBites extends PApplet
                 int iInput = (int) ce.getValue();
                 if ( iInput == -1 )
                 {
-                    loadSpectrumFile();
+                    selectSpectrumFile();
                 }
                 else
                 {
@@ -356,6 +328,10 @@ public class SoundBites extends PApplet
         gui.setAutoDraw(false);
     }
 
+    
+    /**
+     * Draws a single frame.
+     */
     @Override
     public void draw()
     {
@@ -376,7 +352,7 @@ public class SoundBites extends PApplet
         gl.glPushMatrix(); // save current state of matrix
         gl.glLoadIdentity();
         float aspect = (float) width / (float) height;
-        gl.glFrustum(-aspect, aspect, -1, +1, 1.5, 5000);
+        gl.glFrustum(-aspect, aspect, -1, +1, 1.5 *  cameraZoom, 5000);
         gl.glMatrixMode(GL2.GL_MODELVIEW);
         gl.glLoadIdentity();
 
@@ -436,6 +412,9 @@ public class SoundBites extends PApplet
     }
 
     
+    /**
+     * Updates the spectrum information when running on realtime audio.
+     */
     private void updateRealtimeSpectrum()
     {
         SpectrumInfo info = audioAnalyser.getSpectrumInfo(0);
@@ -468,18 +447,30 @@ public class SoundBites extends PApplet
         }
     }
     
+    
+    /**
+     * Called when the mouse button is pressed.
+     */
     @Override
     public void mousePressed()
     {
         dragToRotate = true;
     }
 
+    
+    /**
+     * Called when the mouse button is released.
+     */
     @Override
     public void mouseReleased()
     {
         dragToRotate = false;
     }
 
+    
+    /**
+     * Called while the mouse is dragged
+     */
     @Override
     public void mouseDragged()
     {
@@ -491,6 +482,25 @@ public class SoundBites extends PApplet
         }
     }
 
+    
+    /**
+     * Called when the mouse wheel is used.
+     * 
+     * @param e the event with the mouse wheel scroll amount
+     */
+    @Override
+    public void mouseWheel(MouseEvent e)
+    {
+        int c = e.getCount();
+        if      ( c > 0 ) { cameraZoom /= 1.05f; }
+        else if ( c < 0 ) { cameraZoom *= 1.05f; }
+        cameraZoom = constrain(cameraZoom, 0.25f, 5.0f);
+    }
+    
+    
+    /**
+     * Called when a key is pressed
+     */
     @Override
     public void keyPressed()
     {
@@ -499,8 +509,49 @@ public class SoundBites extends PApplet
             guiEnabled = !guiEnabled;
         }
     }
-
+        
     
+    /**
+     * Called when a controlP5 GUI elements was used.
+     * 
+     * @param event event that triggered this call
+     */
+    public void controlEvent(ControlEvent event)
+    {
+        dragToRotate = false;
+        if ( event.isController() ) 
+        {
+            recomputeTime = millis() + 1000; // 1s from now
+        }
+    }
+    
+    
+    /**
+     * Receives, parses, and executes OSC messages.
+     * 
+     * @param time    the time of receiving a message
+     * @param message the message content
+     */
+    @Override
+    public void acceptMessage(Date time, OSCMessage message)
+    {
+        String   addr   = message.getAddress();
+        Object[] params = message.getArguments();
+        
+        if ( addr.equals("/enableGUI") && (params.length > 0) )
+        {
+            guiEnabled = (Boolean) params[0];
+        }
+        else if ( addr.equals("/paused") && (params.length > 0) )
+        {
+            btnPause.setState((Boolean) params[0]);
+        }
+    }
+    
+    
+    /**
+     * Selects the next render mode.
+     */
     public void toggleRenderMode()
     {
         String txtMode;
@@ -515,21 +566,21 @@ public class SoundBites extends PApplet
         System.out.println("Selected " + txtMode + " render mode");
     }
 
-    public void loadSpectrumFile()
+    
+    /**
+     * Shows a load dialog to select a spectrum file.
+     */
+    public void selectSpectrumFile()
     {
         selectInput("Select the Spectrum file to load", "openSpectrumFile", new File(dataPath(".")));
     }
 
-    public void realtimeSpectrum()
-    {
-        int spectrumCount = audioAnalyser.getSpectrumBandCount();
-        spectrumData = new float[240][spectrumCount];
-        spectrumFile = null;
-        inputIdx = 0;
-        btnPause.setVisible(true);
-        calculateShape();
-    }
 
+    /**
+     * Opens a spectrum file.
+     * 
+     * @param file the file to open
+     */
     public void openSpectrumFile(File file)
     {
         if ( file != null )
@@ -576,49 +627,13 @@ public class SoundBites extends PApplet
             btnPause.setVisible(false);
         }
     }
-
-    public void selectPlainMapping()
-    {
-        Color c = JColorChooser.showDialog(frame, "Select Colour", mapperPlain.getColour());
-        if ( c != null )
-        {
-            mapperPlain = new PlainColourMapper(c);
-            shaper.setColourMapper(mapperPlain);
-        }
-    }
     
-    public void selectPatternMapping()
-    {
-        FileDialog fc = new FileDialog(frame, "Select Image", FileDialog.LOAD);
-        fc.setVisible(true);
-        String f = fc.getFile();
-        if ( f != null )
-        {
-            try
-            {
-                mapper = new ImageColourMapper(new File(fc.getDirectory(), f));
-                shaper.setColourMapper(mapper);
-            }
-            catch (IOException e)
-            {
-                JOptionPane.showMessageDialog(frame, 
-                        "Could not load image.\n" + e.getMessage(),
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
     
-    public void calculateShape()
-    {
-        if ( (shaper == null) || 
-             ( (spectrumData == null) && !btnPause.getState()) ) return;
-
-        shaper.createSurface(spectrumData);
-        shaper.setRenderMode(renderMode);
-        recomputeTime = -1; // done
-    }
-
+    
+    
+    /**
+     * Saves the 3D shape as an STL file.
+     */
     public void saveStlFile()
     {
         if ( spectrumFile == null )
@@ -640,7 +655,67 @@ public class SoundBites extends PApplet
         shaper.writeSTL(w);
         w.close();
     }
+    
+    
+    /**
+     * Switches to using realtime audio spectrum.
+     */
+    public void selectRealtimeSpectrum()
+    {
+        int spectrumCount = audioAnalyser.getSpectrumBandCount();
+        spectrumData = new float[240][spectrumCount];
+        spectrumFile = null;
+        inputIdx = 0;
+        btnPause.setVisible(true);
+        calculateShape();
+    }
+    
+    
+    /**
+     * Selects plain colour mapping.
+     */
+    public void selectPlainMapping()
+    {
+        Color c = JColorChooser.showDialog(frame, "Select Colour", mapperPlain.getColour());
+        if ( c != null )
+        {
+            mapperPlain = new PlainColourMapper(c);
+            shaper.setColourMapper(mapperPlain);
+        }
+    }
+    
+    
+    /**
+     * Selects image pattern mapping.
+     */
+    public void selectPatternMapping()
+    {
+        FileDialog fc = new FileDialog(frame, "Select Image", FileDialog.LOAD);
+        fc.setVisible(true);
+        String f = fc.getFile();
+        if ( f != null )
+        {
+            try
+            {
+                mapper = new ImageColourMapper(new File(fc.getDirectory(), f));
+                shaper.setColourMapper(mapper);
+            }
+            catch (IOException e)
+            {
+                JOptionPane.showMessageDialog(frame, 
+                        "Could not load image.\n" + e.getMessage(),
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
 
+    
+    /**
+     * Selects an audio input.
+     * 
+     * @param mixer the input to use
+     */
     private void selectAudioInput(Mixer.Info mixer)
     {
         audioAnalyser.detachFromAudio();
@@ -655,24 +730,71 @@ public class SoundBites extends PApplet
         System.out.println("Selected Audio Input: " + mixer.getName() );
         lstInputs.setCaptionLabel("Select Input");
         lblFilename.setStringValue("Realtime Spectrum from " + mixer.getName());
-        realtimeSpectrum();
+        selectRealtimeSpectrum();
     }
     
-    public void controlEvent(ControlEvent event)
+    
+    /**
+     * Selects a new shaper module.
+     * 
+     * @param s the new shaper to use
+     */
+    void selectShaper(Shaper s)
     {
-        dragToRotate = false;
-        if ( event.isController() ) 
+        if (shaper != null)
         {
-            recomputeTime = millis() + 1000; // 1s from now
+            shaper.deinitialise();
+        }
+        
+        shaper = s;
+        
+        if ( shaper != null )
+        {
+            shaper.initialise(gui);
+            shaper.setColourMapper(mapper);
+            int y = 10;
+            for ( Controller c : shaper.getControllers() )
+            {
+                c.setPosition(10, y);
+                c.setSize(200, 20);
+                y += 30;
+            }
+            shaper.createSurface(spectrumData);
+            lstShapers.setCaptionLabel("Shaper: " + shaper.getName());
         }
     }
+        
+    
+    /**
+     * Calculates the whole 3D shape.
+     */
+    public void calculateShape()
+    {
+        if ( (shaper == null) || 
+             ( (spectrumData == null) && !btnPause.getState()) ) return;
 
+        shaper.createSurface(spectrumData);
+        shaper.setRenderMode(renderMode);
+        recomputeTime = -1; // done
+    }
+
+    
+    /**
+     * Checks if the applet should run fullscreen.
+     * 
+     * @return <code>true</code> if applet should run fullscreen,
+     *         <code>false</code> if not
+     */
     @Override
     public boolean sketchFullScreen()
     {
         return false;//true;
     }
 
+    
+    /**
+     * Disposes of the applet.
+     */
     @Override
     public void dispose()
     {        
@@ -685,6 +807,12 @@ public class SoundBites extends PApplet
         super.dispose();
     }
     
+    
+    /**
+     * Main method for the program.
+     * 
+     * @param args command line arguments
+     */
     public static void main(String[] args)
     {
         // reportAudioCapabilities();
@@ -802,5 +930,50 @@ public class SoundBites extends PApplet
         }
         return "    Control: unknown type";
     }
+
+    
+        // permanent GUI controls
+    private ControlP5     gui;
+    private boolean       guiEnabled;
+    private Textlabel     lblFilename;
+    private Button        btnRenderMode;
+    private Toggle        btnPause, btnSplit;
+    private DropdownList  lstInputs, lstShapers;
+    
+    private final int guiSizeY   = 20;
+    private final int guiSpacing = 10;
+
+    private OSCPortIn oscReceiver;
+    
+    // object rotation
+    private float objRotX, objRotY;
+    
+    // spectrum data
+    private File      spectrumFile;
+    private float[][] spectrumData;
+    
+    // Camera and skybox
+    private PVector cameraPos;
+    private float   cameraZoom;
+    private Skybox  skybox;
+    
+    // the shaper module
+    private List<Shaper>      shaperList;
+    private Shaper            shaper;
+    private ColourMapper      mapper;
+    private PlainColourMapper mapperPlain;
+    
+    // timestamp to trigger recalculation
+    private long        recomputeTime;
+    // some flags
+    private boolean     dragToRotate;
+    private RenderMode  renderMode;
+
+    // live audio input
+    private List<Mixer.Info>  inputMixers;
+    private Minim             minim;
+    private SpectrumAnalyser  audioAnalyser;
+    private int               inputIdx;
+       
 } 
 
