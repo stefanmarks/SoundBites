@@ -12,8 +12,10 @@ import controlP5.ControlEvent;
 import controlP5.ControlP5;
 import controlP5.Controller;
 import controlP5.DropdownList;
+import controlP5.Slider;
 import controlP5.Textlabel;
 import controlP5.Toggle;
+import ddf.minim.AudioInput;
 import ddf.minim.Minim;
 import geom.RenderMode;
 import geom.Skybox;
@@ -77,11 +79,12 @@ import shaper.Shaper_Sphere;
  * @version 2.3.4 - 13.09.2013: Moved skyboxes into JAR, renamed project to SoundBites
  * @version 2.3.5 - 13.09.2013: Added complete removal of GUI
  * @version 2.3.6 - 13.09.2013: Added zoom and OSC support. 
+ * @version 2.3.7 - 15.09.2013: Added volume controller
  * 
  */
 public class SoundBites extends PApplet implements OSCListener
 {
-    public static final String VERSION = "2.3.6";
+    public static final String VERSION = "2.3.7";
          
     
     /**
@@ -129,12 +132,14 @@ public class SoundBites extends PApplet implements OSCListener
                         inputMixers.add(info);
                         l.close();
                     }
-                } catch (LineUnavailableException e){
+                } 
+                catch (LineUnavailableException e)
+                {
                     // nothing to do here
                 }    
             }
         } 
-        
+
         // create audio analyser
         audioAnalyser = new SpectrumAnalyser(60, 10);
         inputIdx = 0; 
@@ -320,11 +325,28 @@ public class SoundBites extends PApplet implements OSCListener
             lstShapers.addItem(shaperList.get(i).getName(), i);
         }
         
+        // Slider for live input volume there as well
+        sldVolume = gui.addSlider("Volume")
+                .setPosition(guiSpacing, height - (guiSizeY + guiSpacing) * 2)
+                .setHeight(guiSizeY)
+                .setRange(0, 100)
+                .setValue(100)
+                .addListener(new controlP5.ControlListener()
+        {
+            @Override
+            public void controlEvent(ControlEvent ce)
+            {
+                if ( audioVolume != null )
+                {
+                    audioVolume.setValue(ce.getValue());
+                }
+            }
+        });
+        
         // Label with filename at the bottom left
         lblFilename = gui.addTextlabel("filename", "Filename: ---")
                 .setPosition(guiSpacing, height - guiSizeY - guiSpacing)
                 .setSize(width - 20, 20);
-        
         gui.setAutoDraw(false);
     }
 
@@ -624,6 +646,7 @@ public class SoundBites extends PApplet implements OSCListener
             recomputeTime = 0; // force recalculation
             spectrumFile = file;
             lblFilename.setText("Filename: " + file.getName());
+            sldVolume.setVisible(false);
             btnPause.setVisible(false);
         }
     }
@@ -666,6 +689,7 @@ public class SoundBites extends PApplet implements OSCListener
         spectrumData = new float[240][spectrumCount];
         spectrumFile = null;
         inputIdx = 0;
+        sldVolume.setVisible(true);
         btnPause.setVisible(true);
         calculateShape();
     }
@@ -716,20 +740,29 @@ public class SoundBites extends PApplet implements OSCListener
      * 
      * @param mixer the input to use
      */
-    private void selectAudioInput(Mixer.Info mixer)
+    private void selectAudioInput(Mixer.Info mixerInfo)
     {
+        // detach audio analyser and destroy Minim
         audioAnalyser.detachFromAudio();
         if ( minim != null )
         {
             minim.stop();
         }
         
+        // create new Minim with new audio input
         minim = new Minim(this);
-        minim.setInputMixer(AudioSystem.getMixer(mixer));
-        audioAnalyser.attachToAudio(minim.getLineIn());
-        System.out.println("Selected Audio Input: " + mixer.getName() );
+        Mixer mixer = AudioSystem.getMixer(mixerInfo);
+        minim.setInputMixer(mixer);
+        // attach to audio analyser
+        AudioInput input = minim.getLineIn();
+        audioAnalyser.attachToAudio(input);
+        System.out.println("Selected Audio Input: " + mixerInfo.getName() );
+        // get volume/gain controller
+        audioVolume = (FloatControl) input.gain();
+        sldVolume.setRange(audioVolume.getMinimum(), audioVolume.getMaximum());
+        // update GUI
         lstInputs.setCaptionLabel("Select Input");
-        lblFilename.setStringValue("Realtime Spectrum from " + mixer.getName());
+        lblFilename.setStringValue("Realtime Spectrum from " + mixerInfo.getName());
         selectRealtimeSpectrum();
     }
     
@@ -799,6 +832,7 @@ public class SoundBites extends PApplet implements OSCListener
     public void dispose()
     {        
         audioAnalyser.detachFromAudio();
+        audioVolume = null;
         if ( minim != null )
         {
             minim.stop();
@@ -939,6 +973,7 @@ public class SoundBites extends PApplet implements OSCListener
     private Button        btnRenderMode;
     private Toggle        btnPause, btnSplit;
     private DropdownList  lstInputs, lstShapers;
+    private Slider        sldVolume;
     
     private final int guiSizeY   = 20;
     private final int guiSpacing = 10;
@@ -972,6 +1007,7 @@ public class SoundBites extends PApplet implements OSCListener
     // live audio input
     private List<Mixer.Info>  inputMixers;
     private Minim             minim;
+    private FloatControl      audioVolume;
     private SpectrumAnalyser  audioAnalyser;
     private int               inputIdx;
        
