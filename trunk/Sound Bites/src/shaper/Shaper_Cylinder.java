@@ -24,16 +24,18 @@ public class Shaper_Cylinder extends AbstractShaper
     @Override
     public void initialise(ControlP5 gui)
     {
-        controllers = new Controller[3];
-        controllers[0] = sldLength = gui.addSlider("Length")
+        sldLength = gui.addSlider("Length")
                 .setRange(10, 1000)
                 .setValue(400);
-        controllers[1] = sldRadius = gui.addSlider("Radius")
+        controllers.add(sldLength);
+        sldRadius = gui.addSlider("Radius")
                 .setRange(10, 500)
                 .setValue(100);
-        controllers[2] = sldMultiplier = gui.addSlider("Radius Multiplier")
+        controllers.add(sldRadius);
+        sldMultiplier = gui.addSlider("Radius Multiplier")
                 .setRange(0, 10)
                 .setValue(1.5f);
+        controllers.add(sldMultiplier);
 
         surface = new Surface(2, 2);
     }

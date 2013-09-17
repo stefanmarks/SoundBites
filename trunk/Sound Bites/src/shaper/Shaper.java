@@ -4,6 +4,7 @@ import controlP5.ControlP5;
 import controlP5.Controller;
 import geom.RenderMode;
 import java.io.PrintWriter;
+import java.util.List;
 import javax.media.opengl.GL2;
 
 /**
@@ -19,7 +20,7 @@ public interface Shaper
     void initialise(ControlP5 gui);
     void deinitialise();
 
-    Controller[] getControllers();
+    List<Controller> getControllers();
 
     ColourMapper getColourMapper();
     void setColourMapper(ColourMapper mapper);

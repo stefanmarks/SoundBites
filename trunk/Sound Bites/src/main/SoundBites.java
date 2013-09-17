@@ -1,5 +1,6 @@
 package main;
 
+import analyser.AudioManager;
 import analyser.SpectrumAnalyser;
 import analyser.SpectrumInfo;
 import com.illposed.osc.OSCListener;
@@ -9,6 +10,7 @@ import com.illposed.osc.OSCPortIn;
 import controlP5.Button;
 import controlP5.CallbackEvent;
 import controlP5.ControlEvent;
+import controlP5.ControlListener;
 import controlP5.ControlP5;
 import controlP5.Controller;
 import controlP5.DropdownList;
@@ -34,14 +36,11 @@ import java.util.LinkedList;
 import java.util.List;
 import javax.media.opengl.GL2;
 import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.BooleanControl;
 import javax.sound.sampled.CompoundControl;
 import javax.sound.sampled.Control;
-import javax.sound.sampled.EnumControl;
 import javax.sound.sampled.FloatControl;
-import javax.sound.sampled.Line;
-import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
+import javax.sound.sampled.Port;
 import javax.swing.JColorChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -107,39 +106,15 @@ public class SoundBites extends PApplet implements OSCListener
 
         skybox = new Skybox("/resources/skyboxes/SkyboxHexSphere.jpg", 2000);
         //skybox = new Skybox("/resources/skyboxes/SkyboxGridPlane.jpg", 2000);
-
-                
+    
         dragToRotate = false;
         renderMode   = RenderMode.SOLID;
         shaper       = null;
         mapperPlain  = new PlainColourMapper(Color.white);
         mapper       = mapperPlain;
         
-        // find input mixers
-        inputMixers = new LinkedList<Mixer.Info>();
-        for( Mixer.Info info : AudioSystem.getMixerInfo() )
-        {
-            Mixer mixer = AudioSystem.getMixer(info);
-            for ( Line.Info line : mixer.getTargetLineInfo() ) 
-            {
-                try 
-                {
-                    Line l = mixer.getLine(line);
-                    if ( l instanceof javax.sound.sampled.TargetDataLine )
-                    {
-                        l.open();
-                        // success: add to mixer list
-                        inputMixers.add(info);
-                        l.close();
-                    }
-                } 
-                catch (LineUnavailableException e)
-                {
-                    // nothing to do here
-                }    
-            }
-        } 
-
+        // find inputs
+        audioManager = new AudioManager();
         // create audio analyser
         audioAnalyser = new SpectrumAnalyser(60, 10);
         inputIdx = 0; 
@@ -153,11 +128,11 @@ public class SoundBites extends PApplet implements OSCListener
 
         setupOSC();
         createGUI();
-        selectAudioInput(inputMixers.get(0));
+        selectAudioInput(audioManager.getInput(0));
         selectRealtimeSpectrum();
         selectShaper(shaperList.get(0));
     }
-
+    
     
     /**
      * Sets up the OSC receiver.
@@ -272,7 +247,7 @@ public class SoundBites extends PApplet implements OSCListener
         yPos += guiSizeY + guiSpacing;
         lstInputs = gui.addDropdownList("input")
                 .setPosition(width - guiWidth - guiSpacing, yPos + guiSizeY)
-                .setSize(guiWidth, guiSizeY * (2 + inputMixers.size()))
+                .setSize(guiWidth, guiSizeY * (2 + audioManager.getInputs().size()))
                 .setItemHeight(guiSizeY)
                 .setBarHeight(guiSizeY)
                 .addListener(new controlP5.ControlListener()
@@ -287,21 +262,23 @@ public class SoundBites extends PApplet implements OSCListener
                 }
                 else
                 {
-                    selectAudioInput(inputMixers.get(iInput));
+                    selectAudioInput(audioManager.getInput(iInput));
                 }
             }
         });
         // fill dropdown list with entries
         lstInputs.getCaptionLabel().getStyle().paddingTop = 5;
         lstInputs.addItem("Spectrum File", -1);
-        for ( int i = 0 ; i < inputMixers.size() ; i++ )
+        int idx = 0;
+        for ( analyser.AudioInput input : audioManager.getInputs() )
         {
-            String name = inputMixers.get(i).getName();
+            String name = input.toString();
             if ( name.length() > 20 )
             {
                 name = name.substring(0, 20);
             }
-            lstInputs.addItem(name, i);
+            lstInputs.addItem(name, idx);
+            idx++;
         }
         
         // Dropdown list for shaper selection
@@ -336,9 +313,9 @@ public class SoundBites extends PApplet implements OSCListener
             @Override
             public void controlEvent(ControlEvent ce)
             {
-                if ( audioVolume != null )
+                if ( inputGain != null )
                 {
-                    audioVolume.setValue(ce.getValue());
+                    inputGain.setValue(ce.getValue());
                 }
             }
         });
@@ -531,21 +508,6 @@ public class SoundBites extends PApplet implements OSCListener
             guiEnabled = !guiEnabled;
         }
     }
-        
-    
-    /**
-     * Called when a controlP5 GUI elements was used.
-     * 
-     * @param event event that triggered this call
-     */
-    public void controlEvent(ControlEvent event)
-    {
-        dragToRotate = false;
-        if ( event.isController() ) 
-        {
-            recomputeTime = millis() + 1000; // 1s from now
-        }
-    }
     
     
     /**
@@ -689,7 +651,7 @@ public class SoundBites extends PApplet implements OSCListener
         spectrumData = new float[240][spectrumCount];
         spectrumFile = null;
         inputIdx = 0;
-        sldVolume.setVisible(true);
+        sldVolume.setVisible(inputGain != null);
         btnPause.setVisible(true);
         calculateShape();
     }
@@ -738,31 +700,38 @@ public class SoundBites extends PApplet implements OSCListener
     /**
      * Selects an audio input.
      * 
-     * @param mixer the input to use
+     * @param input  the input to use
      */
-    private void selectAudioInput(Mixer.Info mixerInfo)
+    private void selectAudioInput(analyser.AudioInput input)
     {
         // detach audio analyser and destroy Minim
         audioAnalyser.detachFromAudio();
         if ( minim != null )
         {
+            AudioInput in = minim.getLineIn();
+            if ( in != null ) 
+            { 
+                in.close(); 
+            }
             minim.stop();
         }
         
         // create new Minim with new audio input
         minim = new Minim(this);
-        Mixer mixer = AudioSystem.getMixer(mixerInfo);
-        minim.setInputMixer(mixer);
+        minim.setInputMixer(input.getMixer());
         // attach to audio analyser
-        AudioInput input = minim.getLineIn();
-        audioAnalyser.attachToAudio(input);
-        System.out.println("Selected Audio Input: " + mixerInfo.getName() );
+        audioAnalyser.attachToAudio(minim.getLineIn());
+        System.out.println("Selected Audio Input: " + input);
         // get volume/gain controller
-        audioVolume = (FloatControl) input.gain();
-        sldVolume.setRange(audioVolume.getMinimum(), audioVolume.getMaximum());
+        inputGain = input.getGainControl();
+        if ( inputGain != null )
+        {
+            sldVolume.setRange(inputGain.getMinimum(), inputGain.getMaximum());
+        }
+
         // update GUI
         lstInputs.setCaptionLabel("Select Input");
-        lblFilename.setStringValue("Realtime Spectrum from " + mixerInfo.getName());
+        lblFilename.setStringValue("Realtime Spectrum from " + input);
         selectRealtimeSpectrum();
     }
     
@@ -776,6 +745,10 @@ public class SoundBites extends PApplet implements OSCListener
     {
         if (shaper != null)
         {
+            for ( Controller c : shaper.getControllers() )
+            {
+                c.removeListener(RECALC_LISTENER);
+            }
             shaper.deinitialise();
         }
         
@@ -791,7 +764,9 @@ public class SoundBites extends PApplet implements OSCListener
                 c.setPosition(10, y);
                 c.setSize(200, 20);
                 y += 30;
+                c.addListener(RECALC_LISTENER);
             }
+            
             shaper.createSurface(spectrumData);
             lstShapers.setCaptionLabel("Shaper: " + shaper.getName());
         }
@@ -832,7 +807,7 @@ public class SoundBites extends PApplet implements OSCListener
     public void dispose()
     {        
         audioAnalyser.detachFromAudio();
-        audioVolume = null;
+        inputGain = null;
         if ( minim != null )
         {
             minim.stop();
@@ -849,8 +824,8 @@ public class SoundBites extends PApplet implements OSCListener
      */
     public static void main(String[] args)
     {
-        // reportAudioCapabilities();
-        
+        // setMicrophoneSensitivity(10);
+
         final SoundBites p = new SoundBites();
 
         Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
@@ -879,94 +854,70 @@ public class SoundBites extends PApplet implements OSCListener
     }
     
 
-    public static void reportAudioCapabilities()
-    {
-        try
-        {
-            System.out.println("OS: " + System.getProperty("os.name") + " "
-                    + System.getProperty("os.version") + "/"
-                    + System.getProperty("os.arch") + "\nJava: "
-                    + System.getProperty("java.version") + " ("
-                    + System.getProperty("java.vendor") + ")\n");
-            for (Mixer.Info thisMixerInfo : AudioSystem.getMixerInfo())
-            {
-                System.out.println("Mixer: " + thisMixerInfo.getDescription()
-                        + " [" + thisMixerInfo.getName() + "]");
-                Mixer thisMixer = AudioSystem.getMixer(thisMixerInfo);
-                for (Line.Info thisLineInfo : thisMixer.getSourceLineInfo())
-                {
-                    if (thisLineInfo.getLineClass().getName().equals(
-                            "javax.sound.sampled.Port"))
-                    {
-                        Line thisLine = thisMixer.getLine(thisLineInfo);
-                        thisLine.open();
-                        System.out.println("  Source Port: "
-                                + thisLineInfo.toString());
-                        for (Control thisControl : thisLine.getControls())
-                        {
-                            System.out.println(analyzeControl(thisControl));
-                        }
-                        thisLine.close();
-                    }
-                }
-                for (Line.Info thisLineInfo : thisMixer.getTargetLineInfo())
-                {
-                    if (thisLineInfo.getLineClass().getName().equals(
-                            "javax.sound.sampled.Port"))
-                    {
-                        Line thisLine = thisMixer.getLine(thisLineInfo);
-                        thisLine.open();
-                        System.out.println("  Target Port: "
-                                + thisLineInfo.toString());
-                        for (Control thisControl : thisLine.getControls())
-                        {
-                            System.out.println(analyzeControl(thisControl));
-                        }
-                        thisLine.close();
-                    }
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            System.out.println(e);
-        }
-    }
+    public static void setMicrophoneSensitivity(final int sensitivity)
+     {
+          final Port lineIn;
+          final Mixer mixer = AudioSystem.getMixer(AudioSystem.getMixerInfo()[7]);
+          try
+          {
+               if(mixer.isLineSupported(Port.Info.LINE_IN))
+               {
+                    lineIn = (Port)mixer.getLine(Port.Info.LINE_IN);
+                    lineIn.open();
+               }
+               else if(mixer.isLineSupported(Port.Info.MICROPHONE))
+               {
+                    lineIn = (Port)mixer.getLine(Port.Info.MICROPHONE);
+                    lineIn.open();
+               }
+               else
+               {
+                    System.out.println("Unable to get Input Port");
+                    return;
+               }
+               lineIn.getControls();
 
-    public static String analyzeControl(Control thisControl)
-    {
-        String type = thisControl.getType().toString();
-        if (thisControl instanceof BooleanControl)
-        {
-            return "    Control: " + type + " (boolean)";
-        }
-        if (thisControl instanceof CompoundControl)
-        {
-            System.out.println("    Control: " + type
-                    + " (compound - values below)");
-            String toReturn = "";
-            for (Control children
-                    : ((CompoundControl) thisControl).getMemberControls())
-            {
-                toReturn += "  " + analyzeControl(children) + "\n";
-            }
-            return toReturn.substring(0, toReturn.length() - 1);
-        }
-        if (thisControl instanceof EnumControl)
-        {
-            return "    Control:" + type + " (enum: " + thisControl.toString() + ")";
-        }
-        if (thisControl instanceof FloatControl)
-        {
-            return "    Control: " + type + " (float: from "
-                    + ((FloatControl) thisControl).getMinimum() + " to "
-                    + ((FloatControl) thisControl).getMaximum() + ")";
-        }
-        return "    Control: unknown type";
-    }
+               if(lineIn.isControlSupported(FloatControl.Type.MASTER_GAIN))
+               {
+                    System.out.println("kewl");
+               }
 
+               final CompoundControl cc = (CompoundControl)lineIn.getControls()[0];
+               final Control[] controls = cc.getMemberControls();
+               for(final Control c : controls)
+               {
+                    if(c instanceof FloatControl)
+                    {
+                         System.out.println("BEFORE LINE_IN VOL = " + ((FloatControl)c).getValue() + lineIn.getLineInfo().toString());
+                         ((FloatControl)c).setValue((float)sensitivity / 100);
+                         System.out.println("AFTER LINE_IN VOL = " + ((FloatControl)c).getValue());
+                    }
+               }
+          }
+          catch(final Exception e)
+          {
+               System.out.println(e);
+          }
+     }
     
-        // permanent GUI controls
+    
+    /**
+     * Inner control listener that triggers shaper recalculation when parameters are adjusted
+     */
+    private class RecalculateListener implements ControlListener
+    {
+        @Override
+        public void controlEvent(ControlEvent ce)
+        {
+            // trigger recomputation of shape
+            recomputeTime = millis() + 1000; // 1s from now
+        }
+        
+    }
+    // and the static listener instance 
+    final RecalculateListener RECALC_LISTENER = new RecalculateListener();
+    
+    // permanent GUI controls
     private ControlP5     gui;
     private boolean       guiEnabled;
     private Textlabel     lblFilename;
@@ -1005,11 +956,11 @@ public class SoundBites extends PApplet implements OSCListener
     private RenderMode  renderMode;
 
     // live audio input
-    private List<Mixer.Info>  inputMixers;
-    private Minim             minim;
-    private FloatControl      audioVolume;
-    private SpectrumAnalyser  audioAnalyser;
+    private AudioManager      audioManager;
     private int               inputIdx;
+    private Minim             minim;
+    private FloatControl      inputGain;
+    private SpectrumAnalyser  audioAnalyser;
        
 } 
 

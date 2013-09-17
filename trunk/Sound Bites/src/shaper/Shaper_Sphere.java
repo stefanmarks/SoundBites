@@ -25,14 +25,15 @@ public class Shaper_Sphere extends AbstractShaper
     @Override
     public void initialise(ControlP5 gui)
     {
-        controllers = new Controller[2];
-        controllers[0] = sldRadius = gui.addSlider("Radius")
+        sldRadius = gui.addSlider("Radius")
                 .setRange(10, 500)
                 .setValue(100);
-        controllers[1] = sldMultiplier = gui.addSlider("Radius Multiplier")
+        controllers.add(sldRadius);
+        sldMultiplier = gui.addSlider("Radius Multiplier")
                 .setRange(0, 10)
                 .setValue(1.5f);
-        
+        controllers.add(sldMultiplier);
+                
         mtx = new PMatrix3D();
         mtx.reset();
         surface = new Surface(2, 2);
