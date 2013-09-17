@@ -4,6 +4,8 @@ import controlP5.Controller;
 import geom.RenderMode;
 import geom.Surface;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 import javax.media.opengl.GL2;
 
 /**
@@ -17,6 +19,7 @@ public abstract class AbstractShaper implements Shaper
     public AbstractShaper(String name)
     {
         this.name = name;
+        controllers = new ArrayList<Controller>();
     }
     
     
@@ -34,6 +37,7 @@ public abstract class AbstractShaper implements Shaper
         {
             c.remove();
         }
+        controllers.clear();
     }
     
     
@@ -52,7 +56,7 @@ public abstract class AbstractShaper implements Shaper
     
     
     @Override
-    public Controller[] getControllers()
+    public List<Controller> getControllers()
     {
         return controllers;
     }
@@ -128,10 +132,10 @@ public abstract class AbstractShaper implements Shaper
     }
 
     
-    private   String       name;
-    protected ColourMapper mapper;
-    protected Controller[] controllers;
-    protected Surface      surface, splitSurf1, splitSurf2;
-    protected boolean      splitMode;
-    protected float        animAngle;
+    private   String                name;
+    protected ColourMapper          mapper;
+    protected ArrayList<Controller> controllers;
+    protected Surface               surface, splitSurf1, splitSurf2;
+    protected boolean               splitMode;
+    protected float                 animAngle;
 }

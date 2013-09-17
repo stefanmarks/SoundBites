@@ -25,21 +25,24 @@ public class Shaper_Ring extends AbstractShaper
     @Override
     public void initialise(ControlP5 gui)
     {
-        controllers = new Controller[4];
-        controllers[0] = sldTorusRadius = gui.addSlider("Torus Radius")
+        sldTorusRadius = gui.addSlider("Torus Radius")
                 .setRange(0, 1000)
                 .setValue(200);
-        controllers[1] = sldRingRadius = gui.addSlider("Ring Radius")
+        controllers.add(sldTorusRadius);
+        sldRingRadius = gui.addSlider("Ring Radius")
                 .setRange(0, 200)
                 .setValue(20);
-        controllers[2] = sldMultiplier = gui.addSlider("Ring Multiplier")
+        controllers.add(sldRingRadius);
+        sldMultiplier = gui.addSlider("Ring Multiplier")
                 .setRange(0, 10)
                 .setValue(1.5f);
-        controllers[3] = sldRevolutions = gui.addSlider("Revolutions")
+        controllers.add(sldMultiplier);
+        sldRevolutions = gui.addSlider("Revolutions")
                 .setRange(0, 8)
                 .setNumberOfTickMarks(8)
                 .setDecimalPrecision(0)
                 .setValue(0);
+        controllers.add(sldRevolutions);
 
         surface    = new Surface(2, 2);
         splitSurf1 = new Surface(2, 2);
