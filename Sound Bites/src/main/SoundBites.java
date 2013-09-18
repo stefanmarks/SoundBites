@@ -279,8 +279,8 @@ public class SoundBites extends PApplet
         
         // Dropdown list for shaper selection
         lstShapers = gui.addDropdownList("shaper")
-                .setPosition(guiSpacing, guiSpacing + guiSizeY)
-                .setSize(guiControlsW, guiSizeY * (2 + shaperList.size()))
+                .setPosition((width - guiMenuW) / 2, guiSpacing + guiSizeY)
+                .setSize(guiMenuW, guiSizeY * (2 + shaperList.size()))
                 .setItemHeight(guiSizeY)
                 .setBarHeight(guiSizeY)
                 .addListener(new controlP5.ControlListener()
@@ -751,7 +751,7 @@ public class SoundBites extends PApplet
         {
             shaper.initialise(gui);
             shaper.setColourMapper(mapper);
-            int y = guiSpacing + guiSizeY + guiSpacing; 
+            int y = guiSpacing; 
             for ( Controller c : shaper.getControllers() )
             {
                 c.setPosition(guiSpacing, y);

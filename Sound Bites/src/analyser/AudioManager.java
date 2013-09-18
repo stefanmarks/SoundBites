@@ -88,7 +88,6 @@ public class AudioManager
                 Mixer source = findMatchingMixer(mixer);
                 AudioInput input = new AudioInput(port, source);
                 audioInputs.add(input);
-                System.out.println("- " + input);
             }
         }
     }
