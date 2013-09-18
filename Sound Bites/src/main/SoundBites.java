@@ -20,6 +20,8 @@ import controlP5.Toggle;
 import ddf.minim.AudioInput;
 import ddf.minim.Minim;
 import geom.RenderMode;
+import static geom.RenderMode.SOLID;
+import static geom.RenderMode.WIREFRAME;
 import geom.Skybox;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -35,12 +37,7 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import javax.media.opengl.GL2;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.CompoundControl;
-import javax.sound.sampled.Control;
 import javax.sound.sampled.FloatControl;
-import javax.sound.sampled.Mixer;
-import javax.sound.sampled.Port;
 import javax.swing.JColorChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -81,7 +78,7 @@ import shaper.Shaper_Sphere;
  * @version 2.3.7 - 15.09.2013: Added volume controller
  * 
  */
-public class SoundBites extends PApplet implements OSCListener
+public class SoundBites extends PApplet
 {
     public static final String VERSION = "2.3.7";
          
@@ -96,11 +93,9 @@ public class SoundBites extends PApplet implements OSCListener
         size(1024, 768, OPENGL);
         frameRate(60);
 
+        vars = new OscVariables();
         gui = new ControlP5(this);
-        guiEnabled = true;
         
-        objRotX = 30;
-        objRotY = 0;
         cameraPos  = new PVector(0, 0, 700);
         cameraZoom = 1.0f;
 
@@ -108,7 +103,6 @@ public class SoundBites extends PApplet implements OSCListener
         //skybox = new Skybox("/resources/skyboxes/SkyboxGridPlane.jpg", 2000);
     
         dragToRotate = false;
-        renderMode   = RenderMode.SOLID;
         shaper       = null;
         mapperPlain  = new PlainColourMapper(Color.white);
         mapper       = mapperPlain;
@@ -141,8 +135,10 @@ public class SoundBites extends PApplet implements OSCListener
     {
         try
         {
+            // open port
             oscReceiver = new OSCPortIn(OSCPort.defaultSCOSCPort());
-            oscReceiver.addListener(".*", this);
+            // register listener (reacts to every incoming message)
+            oscReceiver.addListener(".*", vars);
             oscReceiver.startListening();
         }
         catch (SocketException e)
@@ -157,13 +153,13 @@ public class SoundBites extends PApplet implements OSCListener
      */
     void createGUI()
     {
-        int yPos     = guiSpacing;
-        int guiWidth = 120;
+        final int xPos = width - guiSpacing - guiMenuW;
+              int yPos = guiSpacing;
         
         // Button for selecting render mode
         btnRenderMode = gui.addButton("Render Mode: Solid")
-                .setPosition(width - guiWidth - guiSpacing, yPos)
-                .setSize(guiWidth, guiSizeY)
+                .setPosition(xPos, yPos)
+                .setSize(guiMenuW, guiSizeY)
                 .addCallback(new controlP5.CallbackListener()
         {
             @Override
@@ -179,16 +175,16 @@ public class SoundBites extends PApplet implements OSCListener
         // Button for selecting split mode
         yPos += guiSizeY + guiSpacing;
         btnSplit = gui.addToggle("Split Mode")
-                .setPosition(width - guiWidth - guiSpacing, yPos)
-                .setSize(guiWidth, guiSizeY)
+                .setPosition(xPos, yPos)
+                .setSize(guiMenuW, guiSizeY)
                 ;
         btnSplit.getCaptionLabel().setPadding(5, -14);
         
         // Button for selecting plain colour mapping
         yPos += guiSizeY + guiSpacing;
         gui.addButton("Plain Mapping")
-                .setPosition(width - guiWidth - guiSpacing, yPos)
-                .setSize(guiWidth, guiSizeY)
+                .setPosition(xPos, yPos)
+                .setSize(guiMenuW, guiSizeY)
                 .addCallback(new controlP5.CallbackListener()
         {
             @Override
@@ -204,8 +200,8 @@ public class SoundBites extends PApplet implements OSCListener
         // Button for selecting image mapping
         yPos += guiSizeY + guiSpacing;
         gui.addButton("Image Mapping")
-                .setPosition(width - guiWidth - guiSpacing, yPos)
-                .setSize(guiWidth, guiSizeY)
+                .setPosition(xPos, yPos)
+                .setSize(guiMenuW, guiSizeY)
                 .addCallback(new controlP5.CallbackListener()
         {
             @Override
@@ -221,8 +217,8 @@ public class SoundBites extends PApplet implements OSCListener
         // Button for saving shape as STL
         yPos += guiSizeY + guiSpacing;
         gui.addButton("Save STL")
-                .setPosition(width - guiWidth - guiSpacing, yPos)
-                .setSize(guiWidth, guiSizeY)
+                .setPosition(xPos, yPos)
+                .setSize(guiMenuW, guiSizeY)
                 .addCallback(new controlP5.CallbackListener()
         {
             @Override
@@ -238,16 +234,16 @@ public class SoundBites extends PApplet implements OSCListener
         // Button for pausing recording
         yPos += guiSizeY + guiSpacing;
         btnPause = gui.addToggle("Pause")
-                .setPosition(width - guiWidth - guiSpacing, yPos)
-                .setSize(guiWidth, guiSizeY)
+                .setPosition(xPos, yPos)
+                .setSize(guiMenuW, guiSizeY)
                 ;
         btnPause.getCaptionLabel().setPadding(5, -14);
         
         // Drop Down list for selecting the input
         yPos += guiSizeY + guiSpacing;
         lstInputs = gui.addDropdownList("input")
-                .setPosition(width - guiWidth - guiSpacing, yPos + guiSizeY)
-                .setSize(guiWidth, guiSizeY * (2 + audioManager.getInputs().size()))
+                .setPosition(xPos, yPos + guiSizeY)
+                .setSize(guiMenuW, guiSizeY * (2 + audioManager.getInputs().size()))
                 .setItemHeight(guiSizeY)
                 .setBarHeight(guiSizeY)
                 .addListener(new controlP5.ControlListener()
@@ -283,8 +279,8 @@ public class SoundBites extends PApplet implements OSCListener
         
         // Dropdown list for shaper selection
         lstShapers = gui.addDropdownList("shaper")
-                .setPosition((width - guiWidth) / 2, guiSpacing + guiSizeY)
-                .setSize(guiWidth, guiSizeY * (2 + shaperList.size()))
+                .setPosition(guiSpacing, guiSpacing + guiSizeY)
+                .setSize(guiControlsW, guiSizeY * (2 + shaperList.size()))
                 .setItemHeight(guiSizeY)
                 .setBarHeight(guiSizeY)
                 .addListener(new controlP5.ControlListener()
@@ -368,17 +364,18 @@ public class SoundBites extends PApplet implements OSCListener
         if ( skybox != null )
         {
             gl.glPushMatrix();
-            gl.glRotatef(objRotX, 1, 0, 0);
-            gl.glRotatef(objRotY, 0, 1, 0);
+            gl.glRotatef(vars.objRotX, 1, 0, 0);
+            gl.glRotatef(vars.objRotY, 0, 1, 0);
             skybox.render(gl);
             gl.glPopMatrix();
         }
         
         // apply camera position and rotation
         gl.glTranslatef(-cameraPos.x, -cameraPos.y, -cameraPos.z);
-        gl.glRotatef(objRotX, 1, 0, 0);
-        gl.glRotatef(objRotY, 0, 1, 0);
+        gl.glRotatef(vars.objRotX, 1, 0, 0);
+        gl.glRotatef(vars.objRotY, 0, 1, 0);
         
+        /*
         // draw coordinate cross
         gl.glDisable(GL2.GL_LIGHTING);
         gl.glEnable(GL2.GL_DEPTH_TEST);
@@ -387,6 +384,7 @@ public class SoundBites extends PApplet implements OSCListener
             gl.glColor3f(0, 1, 0); gl.glVertex3f(0, 0, 0); gl.glVertex3f(0, 100, 0);
             gl.glColor3f(0, 0, 1); gl.glVertex3f(0, 0, 0); gl.glVertex3f(0, 0, 100);
         gl.glEnd();
+        */
         
         // animate and draw the shape
         shaper.setSplitMode(btnSplit.getState());
@@ -404,7 +402,7 @@ public class SoundBites extends PApplet implements OSCListener
             updateRealtimeSpectrum();
         }
         
-        if ( guiEnabled )
+        if ( vars.guiEnabled )
         {
             gui.draw();
         }
@@ -473,11 +471,11 @@ public class SoundBites extends PApplet implements OSCListener
     @Override
     public void mouseDragged()
     {
-        if (dragToRotate)
+        if ( dragToRotate )
         {
-            objRotX += (float) (mouseY - pmouseY) / height * 180;
-            objRotX  = constrain(objRotX, -90, 90);
-            objRotY += (float) (mouseX - pmouseX) / width * 360;
+            vars.objRotX += (float) (mouseY - pmouseY) / height * 180;
+            vars.objRotX  = constrain(vars.objRotX, -90, 90);
+            vars.objRotY += (float) (mouseX - pmouseX) / width * 360;
         }
     }
 
@@ -505,30 +503,7 @@ public class SoundBites extends PApplet implements OSCListener
     {
         if ( key == 'g' )
         {
-            guiEnabled = !guiEnabled;
-        }
-    }
-    
-    
-    /**
-     * Receives, parses, and executes OSC messages.
-     * 
-     * @param time    the time of receiving a message
-     * @param message the message content
-     */
-    @Override
-    public void acceptMessage(Date time, OSCMessage message)
-    {
-        String   addr   = message.getAddress();
-        Object[] params = message.getArguments();
-        
-        if ( addr.equals("/enableGUI") && (params.length > 0) )
-        {
-            guiEnabled = (Boolean) params[0];
-        }
-        else if ( addr.equals("/paused") && (params.length > 0) )
-        {
-            btnPause.setState((Boolean) params[0]);
+            vars.guiEnabled = !vars.guiEnabled;
         }
     }
     
@@ -538,18 +513,38 @@ public class SoundBites extends PApplet implements OSCListener
      */
     public void toggleRenderMode()
     {
-        String txtMode;
-        switch ( renderMode )
+        switch ( vars.renderMode )
         {
-            case SOLID     : renderMode = RenderMode.WIREFRAME; txtMode = "Wireframe"; break;
-            case WIREFRAME : renderMode = RenderMode.POINTS; txtMode = "Points"; break;
-            default:         renderMode = RenderMode.SOLID; txtMode = "Solid"; break;
+            case SOLID     : setRenderMode(RenderMode.WIREFRAME); break;
+            case WIREFRAME : setRenderMode(RenderMode.POINTS); break;
+            default:         setRenderMode(RenderMode.SOLID); break;
         }
-        shaper.setRenderMode(renderMode);
-        btnRenderMode.setCaptionLabel("Render Mode: " + txtMode);
-        System.out.println("Selected " + txtMode + " render mode");
     }
 
+    
+    /**
+     * Sets a specific render mode.
+     * 
+     * @param mode  the mode to select
+     */
+    public void setRenderMode(RenderMode mode)
+    {
+        if ( vars.renderMode != mode )
+        {
+            vars.renderMode = mode;
+            String txtMode;
+            switch ( vars.renderMode )
+            {
+                case WIREFRAME : txtMode = "Wireframe"; break;
+                case POINTS    : txtMode = "Points"; break;
+                default:         txtMode = "Solid"; break;
+            }
+            shaper.setRenderMode(vars.renderMode);
+            btnRenderMode.setCaptionLabel("Render Mode: " + txtMode);
+            System.out.println("Selected " + txtMode + " render mode");
+        }
+    }
+    
     
     /**
      * Shows a load dialog to select a spectrum file.
@@ -612,8 +607,6 @@ public class SoundBites extends PApplet implements OSCListener
             btnPause.setVisible(false);
         }
     }
-    
-    
     
     
     /**
@@ -743,7 +736,7 @@ public class SoundBites extends PApplet implements OSCListener
      */
     void selectShaper(Shaper s)
     {
-        if (shaper != null)
+        if ( shaper != null )
         {
             for ( Controller c : shaper.getControllers() )
             {
@@ -758,17 +751,18 @@ public class SoundBites extends PApplet implements OSCListener
         {
             shaper.initialise(gui);
             shaper.setColourMapper(mapper);
-            int y = 10;
+            int y = guiSpacing + guiSizeY + guiSpacing; 
             for ( Controller c : shaper.getControllers() )
             {
-                c.setPosition(10, y);
-                c.setSize(200, 20);
-                y += 30;
+                c.setPosition(guiSpacing, y);
+                c.setSize(guiControlsW, 20);
+                y += guiSizeY + guiSpacing;
                 c.addListener(RECALC_LISTENER);
             }
             
             shaper.createSurface(spectrumData);
             lstShapers.setCaptionLabel("Shaper: " + shaper.getName());
+            lstShapers.bringToFront();
         }
     }
         
@@ -782,7 +776,7 @@ public class SoundBites extends PApplet implements OSCListener
              ( (spectrumData == null) && !btnPause.getState()) ) return;
 
         shaper.createSurface(spectrumData);
-        shaper.setRenderMode(renderMode);
+        shaper.setRenderMode(vars.renderMode);
         recomputeTime = -1; // done
     }
 
@@ -853,53 +847,6 @@ public class SoundBites extends PApplet implements OSCListener
         }, p);
     }
     
-
-    public static void setMicrophoneSensitivity(final int sensitivity)
-     {
-          final Port lineIn;
-          final Mixer mixer = AudioSystem.getMixer(AudioSystem.getMixerInfo()[7]);
-          try
-          {
-               if(mixer.isLineSupported(Port.Info.LINE_IN))
-               {
-                    lineIn = (Port)mixer.getLine(Port.Info.LINE_IN);
-                    lineIn.open();
-               }
-               else if(mixer.isLineSupported(Port.Info.MICROPHONE))
-               {
-                    lineIn = (Port)mixer.getLine(Port.Info.MICROPHONE);
-                    lineIn.open();
-               }
-               else
-               {
-                    System.out.println("Unable to get Input Port");
-                    return;
-               }
-               lineIn.getControls();
-
-               if(lineIn.isControlSupported(FloatControl.Type.MASTER_GAIN))
-               {
-                    System.out.println("kewl");
-               }
-
-               final CompoundControl cc = (CompoundControl)lineIn.getControls()[0];
-               final Control[] controls = cc.getMemberControls();
-               for(final Control c : controls)
-               {
-                    if(c instanceof FloatControl)
-                    {
-                         System.out.println("BEFORE LINE_IN VOL = " + ((FloatControl)c).getValue() + lineIn.getLineInfo().toString());
-                         ((FloatControl)c).setValue((float)sensitivity / 100);
-                         System.out.println("AFTER LINE_IN VOL = " + ((FloatControl)c).getValue());
-                    }
-               }
-          }
-          catch(final Exception e)
-          {
-               System.out.println(e);
-          }
-     }
-    
     
     /**
      * Inner control listener that triggers shaper recalculation when parameters are adjusted
@@ -912,27 +859,27 @@ public class SoundBites extends PApplet implements OSCListener
             // trigger recomputation of shape
             recomputeTime = millis() + 1000; // 1s from now
         }
-        
     }
+    
     // and the static listener instance 
     final RecalculateListener RECALC_LISTENER = new RecalculateListener();
     
+    
     // permanent GUI controls
     private ControlP5     gui;
-    private boolean       guiEnabled;
     private Textlabel     lblFilename;
     private Button        btnRenderMode;
     private Toggle        btnPause, btnSplit;
     private DropdownList  lstInputs, lstShapers;
     private Slider        sldVolume;
-    
-    private final int guiSizeY   = 20;
-    private final int guiSpacing = 10;
+
+    // GUI spacing and sizes
+    private final int guiSizeY     = 20;
+    private final int guiControlsW = 200;
+    private final int guiMenuW     = 120;
+    private final int guiSpacing   = 10;
 
     private OSCPortIn oscReceiver;
-    
-    // object rotation
-    private float objRotX, objRotY;
     
     // spectrum data
     private File      spectrumFile;
@@ -953,7 +900,6 @@ public class SoundBites extends PApplet implements OSCListener
     private long        recomputeTime;
     // some flags
     private boolean     dragToRotate;
-    private RenderMode  renderMode;
 
     // live audio input
     private AudioManager      audioManager;
@@ -961,6 +907,58 @@ public class SoundBites extends PApplet implements OSCListener
     private Minim             minim;
     private FloatControl      inputGain;
     private SpectrumAnalyser  audioAnalyser;
-       
+      
+    
+    public class OscVariables implements OSCListener
+    {
+        public OscVariables()
+        {
+            objRotX    = 30;
+            objRotY    = 0;
+            renderMode = RenderMode.SOLID;
+            guiEnabled = true;
+        }
+        
+        /**
+         * Receives, parses, and executes OSC messages.
+         * 
+         * @param time    the time of receiving a message
+         * @param message the message content
+         */
+        @Override
+        public void acceptMessage(Date time, OSCMessage message)
+        {
+            String   addr     = message.getAddress();
+            Object[] params   = message.getArguments();
+            int      parCount = params.length;
+
+            if ( parCount > 0 )
+            {
+                if ( addr.equals("/enableGUI") )
+                {
+                    guiEnabled = (Boolean) params[0];
+                }
+                else if ( addr.equals("/paused") )
+                {
+                    btnPause.setState((Boolean) params[0]);
+                }
+                else if ( addr.equals("/cam/rotX") )
+                {
+                    objRotX = (Float) params[0];                
+                }
+                else if ( addr.equals("/cam/rotY") )
+                {
+                    objRotY = (Float) params[0];                
+                }
+            }
+        }
+        
+        // object rotation    
+        public float       objRotX, objRotY;
+        public RenderMode  renderMode;
+        public boolean     guiEnabled;
+    }
+
+    private OscVariables vars;
 } 
 

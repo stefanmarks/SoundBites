@@ -22,24 +22,41 @@ import javax.sound.sampled.Port;
  */
 public class AudioManager 
 {   
+    /**
+     * Creates an audio manager instance.
+     */
     public AudioManager()
     {
         collectMixerInformation();
     }
     
     
+    /**
+     * Gets a list of audio inputs.
+     * 
+     * @return the list of audio inputs
+     */
     public List<AudioInput> getInputs()
     {
         return Collections.unmodifiableList(audioInputs);
     }
     
     
+    /**
+     * Get a specific audio input.
+     * 
+     * @param idx the input index
+     * @return the audio input object
+     */
     public AudioInput getInput(int idx)
     {
         return audioInputs.get(idx);
     }
     
     
+    /**
+     * Gather information about mixer ports.
+     */
     private void collectMixerInformation()
     {
         audioInputs = new LinkedList<AudioInput>();
@@ -76,6 +93,12 @@ public class AudioManager
         }
     }
     
+    
+    /**
+     * Finds a mixer for a specific port.
+     * 
+     * @param mixer1 the port mixer to find the corresponding line mixer for.
+     */
     private Mixer findMatchingMixer(Mixer mixer1)
     {
         Mixer retMixer = null;
@@ -91,6 +114,10 @@ public class AudioManager
         return retMixer;
     }
     
+    
+    /**
+     * Method for reporting audio capabilities.
+     */
     public void reportAudioCapabilities()
     {
         System.out.println("OS: " + System.getProperty("os.name") + " "
@@ -104,6 +131,7 @@ public class AudioManager
             reportMixerCapabilities(mixerInfo);
         }
     }
+    
     
     private void reportMixerCapabilities(Mixer.Info thisMixerInfo)
     {
@@ -153,6 +181,7 @@ public class AudioManager
         }
     }
 
+    
     private String reportControlCapabilities(Control thisControl)
     {
         String type = thisControl.getType().toString();
@@ -186,5 +215,4 @@ public class AudioManager
     }
 
     private List<AudioInput> audioInputs;
-    
 }
