@@ -3,7 +3,6 @@ package analyser;
 import javax.sound.sampled.CompoundControl;
 import javax.sound.sampled.Control;
 import javax.sound.sampled.FloatControl;
-import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.Port;
 
@@ -15,6 +14,12 @@ import javax.sound.sampled.Port;
  */
 public class AudioInput 
 {
+    /**
+     * Creates an audio input object.
+     * 
+     * @param port  the port mixer
+     * @param mixer the line mixer
+     */
     public AudioInput(Port port, Mixer mixer)
     {
         this.port  = port;
@@ -24,12 +29,22 @@ public class AudioInput
     }
     
     
+    /**
+     * Gets the port mixer object.
+     * 
+     * @return the port mixer
+     */
     public Mixer getMixer()
     {
         return mixer;
     }
     
     
+    /**
+     * Gets the gain controller for the port.
+     * 
+     * @return the port gain controller
+     */
     public FloatControl getGainControl()
     {
         return gainControl;

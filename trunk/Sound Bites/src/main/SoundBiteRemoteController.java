@@ -2,6 +2,7 @@ package main;
 
 import com.illposed.osc.OSCMessage;
 import com.illposed.osc.OSCPortOut;
+import com.sun.jmx.snmp.tasks.Task;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketException;
@@ -9,6 +10,8 @@ import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import javax.swing.DefaultListModel;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -33,6 +36,9 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         
         initComponents();
         
+        animationTimer  = new Timer();
+        cameraAnimation = new CameraRotationTask();
+        animationTimer.scheduleAtFixedRate(cameraAnimation, 0, 1000 / 60);
     }
 
     /**
@@ -43,40 +49,20 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     private void initComponents()
     {
 
-        chkGuiVisible = new javax.swing.JCheckBox();
-        chkPaused = new javax.swing.JCheckBox();
         javax.swing.JPanel pnlSlaves = new javax.swing.JPanel();
         javax.swing.JScrollPane scrlSlaves = new javax.swing.JScrollPane();
         lstSlaves = new javax.swing.JList();
         pnlSlaveButtons = new javax.swing.JPanel();
         btnAdd = new javax.swing.JButton();
         btnRemove = new javax.swing.JButton();
+        pnlButtons = new javax.swing.JPanel();
+        chkGuiVisible = new javax.swing.JCheckBox();
+        chkPaused = new javax.swing.JCheckBox();
+        chkCameraRotation = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("SoundBite Remote Controller");
-
-        chkGuiVisible.setSelected(true);
-        chkGuiVisible.setText("GUI Visible:");
-        chkGuiVisible.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
-        chkGuiVisible.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
-        chkGuiVisible.addActionListener(new java.awt.event.ActionListener()
-        {
-            public void actionPerformed(java.awt.event.ActionEvent evt)
-            {
-                chkGuiVisibleActionPerformed(evt);
-            }
-        });
-
-        chkPaused.setText("Paused:");
-        chkPaused.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
-        chkPaused.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
-        chkPaused.addActionListener(new java.awt.event.ActionListener()
-        {
-            public void actionPerformed(java.awt.event.ActionEvent evt)
-            {
-                chkPausedActionPerformed(evt);
-            }
-        });
+        getContentPane().setLayout(new java.awt.GridLayout(0, 2, 10, 0));
 
         pnlSlaves.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createTitledBorder("Slaves"), javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5)));
         pnlSlaves.setLayout(new java.awt.BorderLayout(0, 5));
@@ -110,32 +96,41 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
 
         pnlSlaves.add(pnlSlaveButtons, java.awt.BorderLayout.PAGE_END);
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(pnlSlaves, javax.swing.GroupLayout.PREFERRED_SIZE, 192, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 82, Short.MAX_VALUE)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(chkGuiVisible, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(chkPaused, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(pnlSlaves, javax.swing.GroupLayout.DEFAULT_SIZE, 278, Short.MAX_VALUE)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(chkGuiVisible)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(chkPaused)
-                        .addGap(0, 0, Short.MAX_VALUE)))
-                .addContainerGap())
-        );
+        getContentPane().add(pnlSlaves);
+
+        pnlButtons.setLayout(new java.awt.GridLayout(5, 0));
+
+        chkGuiVisible.setSelected(true);
+        chkGuiVisible.setText("GUI Visible:");
+        chkGuiVisible.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        chkGuiVisible.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
+        chkGuiVisible.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                chkGuiVisibleActionPerformed(evt);
+            }
+        });
+        pnlButtons.add(chkGuiVisible);
+
+        chkPaused.setText("Paused:");
+        chkPaused.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        chkPaused.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
+        chkPaused.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                chkPausedActionPerformed(evt);
+            }
+        });
+        pnlButtons.add(chkPaused);
+
+        chkCameraRotation.setText("Rotate Camera:");
+        chkCameraRotation.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        chkCameraRotation.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
+        pnlButtons.add(chkCameraRotation);
+
+        getContentPane().add(pnlButtons);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -223,6 +218,7 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         }
     }//GEN-LAST:event_btnRemoveActionPerformed
 
+    
     /**
      * Sends a message to the slaves.
      * 
@@ -274,6 +270,29 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     }
     
     
+    private class CameraRotationTask extends TimerTask
+    {
+        public CameraRotationTask()
+        {
+            camRotX = 0;
+            camRotY = 0;
+        }
+        
+        @Override
+        public void run()
+        {
+            if ( !chkCameraRotation.isSelected() ) return;
+            
+            camRotY += 0.25;
+            if ( camRotY > 360 ) { camRotY -= 360; }
+            camRotX = 30 * (float) Math.sin(Math.toRadians(camRotY));
+            sendMessage("/cam/rotX", camRotX);
+            sendMessage("/cam/rotY", camRotY);
+        }
+        
+        float camRotX, camRotY;
+    }
+    
     /**
      * @param args the command line arguments
      */
@@ -296,14 +315,18 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnAdd;
     private javax.swing.JButton btnRemove;
+    private javax.swing.JCheckBox chkCameraRotation;
     private javax.swing.JCheckBox chkGuiVisible;
     private javax.swing.JCheckBox chkPaused;
     private javax.swing.JList lstSlaves;
+    private javax.swing.JPanel pnlButtons;
     private javax.swing.JPanel pnlSlaveButtons;
     // End of variables declaration//GEN-END:variables
 
     private DefaultListModel<Slave>  slaves;
     private LinkedList<Object>       params;
+    private Timer                    animationTimer;
+    private CameraRotationTask       cameraAnimation;
     
     /**
      * Class for encapsulating slaves, their state, and the output for the list model.
