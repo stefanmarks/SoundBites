@@ -24,13 +24,6 @@ public abstract class AbstractShaper implements Shaper
     
     
     @Override
-    public String getName()
-    {
-        return name;
-    }
-    
-
-    @Override
     public void deinitialise()
     {
         for ( Controller c : controllers )
@@ -132,6 +125,13 @@ public abstract class AbstractShaper implements Shaper
     }
 
     
+    @Override
+    public String toString()
+    {
+        return name;
+    }
+    
+
     private   String                name;
     protected ColourMapper          mapper;
     protected ArrayList<Controller> controllers;

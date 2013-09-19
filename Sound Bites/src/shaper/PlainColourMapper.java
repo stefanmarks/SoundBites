@@ -10,21 +10,44 @@ import java.awt.Color;
  */
 public class PlainColourMapper implements ColourMapper 
 {
-    public PlainColourMapper(Color c) 
+    /**
+     * Creates a new plain colout mapper.
+     * 
+     * @param name the name of the mapper
+     * @param c    the colour to use
+     */
+    public PlainColourMapper(String name, Color c) 
     {
+        this.name = name;
         colour = c;
     }
     
+    
+    /**
+     * Gets the colour used by this mapper.
+     * 
+     * @return the colour used for mapping
+     */
     public Color getColour()
     {
         return colour;
     }
             
+    
     @Override
     public int mapSpectrum(float[] spectrum, int idx)
     {
         return colour.getRGB();
     }
     
-    private Color colour;
+    
+    @Override
+    public String toString()
+    {
+        return name;
+    }
+    
+    
+    private String name;
+    private Color  colour;
 }

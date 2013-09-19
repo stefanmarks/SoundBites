@@ -76,7 +76,6 @@ public class Shaper_Cylinder extends AbstractShaper
     @Override
     public void updateSurface(int idx, float[] spectrum)
     {
-        PVector v;
         // convert array index into degree angle [0..360]
         float fT = 360.0f * idx / surface.getXSize();
         
