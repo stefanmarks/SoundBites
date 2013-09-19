@@ -109,6 +109,9 @@ public class SoundBites extends PApplet
         
         // find inputs
         audioManager = new AudioManager();
+        System.out.println("Audio Capabilities:");
+        audioManager.reportAudioCapabilities();
+        
         // create audio analyser
         audioAnalyser = new SpectrumAnalyser(60, 10);
         inputIdx = 0; 
