@@ -14,9 +14,7 @@ import javax.media.opengl.GL2;
  * @version 1.0 - 15.08.2013: Created
  */
 public interface Shaper
-{
-    String getName();
-    
+{  
     void initialise(ControlP5 gui);
     void deinitialise();
 

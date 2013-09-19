@@ -8,5 +8,12 @@ package shaper;
  */
 public interface ColourMapper 
 {
+    /**
+     * Maps an intensity of the frequency spectrum to a colour.
+     * 
+     * @param spectrum the spectrum to use
+     * @param idx      the index within the spectrum to use
+     * @return the colour in RGBA code
+     */
     int mapSpectrum(float[] spectrum, int idx);
 }

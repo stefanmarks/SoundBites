@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.BooleanControl;
+import javax.sound.sampled.Clip;
 import javax.sound.sampled.CompoundControl;
 import javax.sound.sampled.Control;
 import javax.sound.sampled.EnumControl;
@@ -27,7 +28,6 @@ public class AudioManager
      */
     public AudioManager()
     {
-        //reportAudioCapabilities();
         collectPortMixerInformation();
         
         if ( audioInputs.isEmpty() )
@@ -142,90 +142,96 @@ public class AudioManager
     /**
      * Method for reporting audio capabilities.
      */
-    public void reportAudioCapabilities()
+    public String reportAudioCapabilities()
     {
-        System.out.println("OS: " + System.getProperty("os.name") + " "
-                + System.getProperty("os.version") + "/"
-                + System.getProperty("os.arch") + "\nJava: "
-                + System.getProperty("java.version") + " ("
-                + System.getProperty("java.vendor") + ")\n");
+        StringBuilder sb = new StringBuilder();
+        sb.append("OS: ").append(System.getProperty("os.name")).append(" ")
+          .append(System.getProperty("os.version")).append("/").append(System.getProperty("os.arch"))
+          .append("\n")
+          .append("Java: ")
+          .append(System.getProperty("java.version"))
+          .append(" (").append(System.getProperty("java.vendor")).append(")")
+          .append("\n");
         
         for ( Mixer.Info mixerInfo : AudioSystem.getMixerInfo() )
         {
-            reportMixerCapabilities(mixerInfo);
+            sb.append(reportMixerCapabilities(mixerInfo));
         }
+        return sb.toString();
     }
     
     
-    private void reportMixerCapabilities(Mixer.Info thisMixerInfo)
+    private String reportMixerCapabilities(Mixer.Info mixerInfo)
     {
+        StringBuilder sb = new StringBuilder();
+            sb.append("Mixer: ")
+              .append(mixerInfo.getDescription())
+              .append(" [").append(mixerInfo.getName()).append("]")
+              .append("\n");
+            
+        Mixer mixer = AudioSystem.getMixer(mixerInfo);
+            
         try
         {
-            System.out.println("Mixer: " + thisMixerInfo.getDescription()
-                    + " [" + thisMixerInfo.getName() + "]");
-            
-            Mixer thisMixer = AudioSystem.getMixer(thisMixerInfo);
-            
-            for (Line.Info thisLineInfo : thisMixer.getSourceLineInfo())
+            for ( Line.Info lineInfo : mixer.getSourceLineInfo() )
             {
-                Line thisLine = thisMixer.getLine(thisLineInfo);
-                thisLine.open();
-                System.out.println("  Source Port: "
-                        + thisLineInfo.toString());
-                for (Control thisControl : thisLine.getControls())
+                Line thisLine = mixer.getLine(lineInfo);
+                if ( !(thisLine instanceof Clip) ) { thisLine.open(); }
+                sb.append("- Source Port: ").append(lineInfo.toString()).append("\n");
+                for ( Control ctrl : thisLine.getControls() )
                 {
-                    System.out.println(reportControlCapabilities(thisControl));
+                    sb.append(reportControlCapabilities(ctrl)).append("\n");
                 }
-                thisLine.close();
+                if ( !(thisLine instanceof Clip) ) { thisLine.close(); }
             }
-            for (Line.Info thisLineInfo : thisMixer.getTargetLineInfo())
+            for ( Line.Info lineInfo : mixer.getTargetLineInfo() )
             {
-                Line thisLine = thisMixer.getLine(thisLineInfo);
+                Line thisLine = mixer.getLine(lineInfo);
                 thisLine.open();
-                System.out.println("  Target Port: "
-                        + thisLineInfo.toString());
-                for (Control thisControl : thisLine.getControls())
+                sb.append("- Target Port: ").append(lineInfo.toString()).append("\n");
+                for ( Control ctrl : thisLine.getControls() )
                 {
-                    System.out.println(reportControlCapabilities(thisControl));
+                    sb.append(reportControlCapabilities(ctrl)).append("\n");
                 }
                 thisLine.close();
             }
         }
-        catch (Exception e)
+        catch ( Exception e )
         {
-            System.out.println(e);
+            sb.append("Error while examining mixer ").append(mixerInfo.getName())
+              .append(" (").append(e).append(")");
         }
+        return sb.toString();
     }
 
     
-    private String reportControlCapabilities(Control thisControl)
+    private String reportControlCapabilities(Control control)
     {
-        String type = thisControl.getType().toString();
-        if (thisControl instanceof BooleanControl)
+        String type = control.getType().toString();
+        if ( control instanceof BooleanControl )
         {
             return "    Control: " + type + " (boolean)";
         }
-        if (thisControl instanceof CompoundControl)
+        else if ( control instanceof EnumControl )
         {
-            System.out.println("    Control: " + type
-                    + " (compound - values below)");
-            String toReturn = "";
-            for (Control children
-                    : ((CompoundControl) thisControl).getMemberControls())
+            return "    Control:" + type + " (enum: " + control.toString() + ")";
+        }
+        else if ( control instanceof FloatControl )
+        {
+            FloatControl floatControl = (FloatControl) control;
+            return "    Control: " + type + " (float: from "
+                    + floatControl.getMinimum() + " to "
+                    + floatControl.getMaximum() + ")";
+        }
+        else if ( control instanceof CompoundControl )
+        {
+            CompoundControl compoundCtrl = (CompoundControl) control;
+            String toReturn = "    Control: " + type + " (compound - values below)\n";
+            for ( Control children : compoundCtrl.getMemberControls())
             {
                 toReturn += "  " + reportControlCapabilities(children) + "\n";
             }
             return toReturn.substring(0, toReturn.length() - 1);
-        }
-        if (thisControl instanceof EnumControl)
-        {
-            return "    Control:" + type + " (enum: " + thisControl.toString() + ")";
-        }
-        if (thisControl instanceof FloatControl)
-        {
-            return "    Control: " + type + " (float: from "
-                    + ((FloatControl) thisControl).getMinimum() + " to "
-                    + ((FloatControl) thisControl).getMaximum() + ")";
         }
         return "    Control: unknown type";
     }

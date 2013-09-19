@@ -17,7 +17,6 @@ import controlP5.DropdownList;
 import controlP5.Slider;
 import controlP5.Textlabel;
 import controlP5.Toggle;
-import ddf.minim.AudioInput;
 import ddf.minim.Minim;
 import geom.RenderMode;
 import static geom.RenderMode.SOLID;
@@ -25,10 +24,8 @@ import static geom.RenderMode.WIREFRAME;
 import geom.Skybox;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.FileDialog;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.Thread.UncaughtExceptionHandler;
@@ -38,7 +35,6 @@ import java.util.LinkedList;
 import java.util.List;
 import javax.media.opengl.GL2;
 import javax.sound.sampled.FloatControl;
-import javax.swing.JColorChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -75,42 +71,53 @@ import shaper.Shaper_Sphere;
  * @version 2.3.4 - 13.09.2013: Moved skyboxes into JAR, renamed project to SoundBites
  * @version 2.3.5 - 13.09.2013: Added complete removal of GUI
  * @version 2.3.6 - 13.09.2013: Added zoom and OSC support. 
- * @version 2.3.7 - 15.09.2013: Added volume controller
+ * @version 2.3.7 - 15.09.2013: Added volume controller, refactored audio system, added fullscreen dialog, rearranged GUI
  * 
  */
 public class SoundBites extends PApplet
 {
-    public static final String VERSION = "2.3.7";
+    public static final String VERSION = "2.3.7b";
+
+    /**
+     * Creates an instance of the SoundBites program.
+     * 
+     * @param fullscreen <code>true</code> if program should run in fullscreen mode,
+     *                   <code>false</code> if program should run in window
+     */
+    public SoundBites(boolean fullscreen)
+    {
+        this.runInFullscreen = fullscreen;
+    }
          
-    
     /**
      * Sets up the program.
      */
     @Override
     public void setup()
     {
-        //size(1920, 1080, OPENGL);
-        size(1024, 768, OPENGL);
+        if ( runInFullscreen )
+        {
+            size(displayWidth, displayHeight, OPENGL);
+        }
+        else
+        {
+            size(1024, 768, OPENGL);
+        }
+        
         frameRate(60);
 
         vars = new OscVariables();
-        gui = new ControlP5(this);
+        gui  = new ControlP5(this);
         
-        cameraPos  = new PVector(0, 0, 700);
-        cameraZoom = 1.0f;
+        cameraPos    = new PVector(0, 0, 700);
+        cameraZoom   = 1.0f;
+        dragToRotate = false;
 
         skybox = new Skybox("/resources/skyboxes/SkyboxHexSphere_PoT.jpg", 2000);
         //skybox = new Skybox("/resources/skyboxes/SkyboxGridPlane_PoT.jpg", 2000);
     
-        dragToRotate = false;
-        shaper       = null;
-        mapperPlain  = new PlainColourMapper(Color.white);
-        mapper       = mapperPlain;
-        
         // find inputs
         audioManager = new AudioManager();
-        System.out.println("Audio Capabilities:");
-        audioManager.reportAudioCapabilities();
         
         // create audio analyser
         audioAnalyser = new SpectrumAnalyser(60, 10);
@@ -122,18 +129,33 @@ public class SoundBites extends PApplet
         shaperList.add(new Shaper_RingOld());
         shaperList.add(new Shaper_Sphere());
         shaperList.add(new Shaper_Cylinder());
+        shaper = null;
+
+        // populate Mapper list
+        mapperList = new LinkedList<ColourMapper>();
+        mapperList.add(new PlainColourMapper("White", Color.white));
+        mapperList.add(new PlainColourMapper("Brown", Color.decode("#603000")));
+        mapperList.add(ImageColourMapper.create("Greyscale", "GreyMap.png"));
+        mapperList.add(ImageColourMapper.create("Transparent", "TransparentMap.png"));
+        mapperList.add(ImageColourMapper.create("Spectrum", "SpectrumMap.png"));
+        mapperList.add(ImageColourMapper.create("Fire", "FireMap.png"));
+        mapperList.add(ImageColourMapper.create("Ice", "IceMap.png"));
+        mapper = mapperList.get(0);
 
         setupOSC();
         createGUI();
-        selectAudioInput(audioManager.getInput(0));
+        
+        selectAudioInput(null);
+        
         selectShaper(shaperList.get(0));
+        selectMapper(mapperList.get(0));
     }
     
     
     /**
      * Sets up the OSC receiver.
      */
-    void setupOSC()
+    private void setupOSC()
     {
         try
         {
@@ -153,12 +175,56 @@ public class SoundBites extends PApplet
     /**
      * Creates the permanent GUI elements.
      */
-    void createGUI()
+    private void createGUI()
     {
         final int xPos = width - guiSpacing - guiMenuW;
               int yPos = guiSpacing;
-        
+                   
+        // Dropdown list for shaper selection
+        lstShapers = gui.addDropdownList("shaper")
+                .setPosition(xPos, yPos + guiSizeY)
+                .setSize(guiMenuW, guiSizeY * (2 + shaperList.size()))
+                .setItemHeight(guiSizeY)
+                .setBarHeight(guiSizeY)
+                .addListener(new controlP5.ControlListener()
+        {
+            @Override
+            public void controlEvent(ControlEvent ce)
+            {
+                int iInput = (int) ce.getValue();
+                selectShaper(shaperList.get(iInput));
+            }
+        });
+        lstShapers.getCaptionLabel().getStyle().paddingTop = 5;
+        for ( int i = 0 ; i < shaperList.size() ; i++ )
+        {
+            lstShapers.addItem(shaperList.get(i).toString(), i);
+        }
+
+        // Dropdown list for mapper selection
+        yPos += guiSizeY + guiSpacing;
+        lstMappers = gui.addDropdownList("mapper")
+                .setPosition(xPos, yPos + guiSizeY)
+                .setSize(guiMenuW, guiSizeY * (2 + mapperList.size()))
+                .setItemHeight(guiSizeY)
+                .setBarHeight(guiSizeY)
+                .addListener(new controlP5.ControlListener()
+        {
+            @Override
+            public void controlEvent(ControlEvent ce)
+            {
+                int iInput = (int) ce.getValue();
+                selectMapper(mapperList.get(iInput));
+            }
+        });
+        lstMappers.getCaptionLabel().getStyle().paddingTop = 5;
+        for ( int i = 0 ; i < mapperList.size() ; i++ )
+        {
+            lstMappers.addItem(mapperList.get(i).toString(), i);
+        }
+
         // Button for selecting render mode
+        yPos += guiSizeY + guiSpacing;
         btnRenderMode = gui.addButton("Render Mode: Solid")
                 .setPosition(xPos, yPos)
                 .setSize(guiMenuW, guiSizeY)
@@ -181,40 +247,6 @@ public class SoundBites extends PApplet
                 .setSize(guiMenuW, guiSizeY)
                 ;
         btnSplit.getCaptionLabel().setPadding(5, -14);
-        
-        // Button for selecting plain colour mapping
-        yPos += guiSizeY + guiSpacing;
-        gui.addButton("Plain Mapping")
-                .setPosition(xPos, yPos)
-                .setSize(guiMenuW, guiSizeY)
-                .addCallback(new controlP5.CallbackListener()
-        {
-            @Override
-            public void controlEvent(CallbackEvent e)
-            {
-                if (e.getAction() == ControlP5.ACTION_RELEASED)
-                {
-                    selectPlainMapping();
-                }
-            }
-        });
-        
-        // Button for selecting image mapping
-        yPos += guiSizeY + guiSpacing;
-        gui.addButton("Image Mapping")
-                .setPosition(xPos, yPos)
-                .setSize(guiMenuW, guiSizeY)
-                .addCallback(new controlP5.CallbackListener()
-        {
-            @Override
-            public void controlEvent(CallbackEvent e)
-            {
-                if (e.getAction() == ControlP5.ACTION_RELEASED)
-                {
-                    selectPatternMapping();
-                }
-            }
-        });
         
         // Button for saving shape as STL
         yPos += guiSizeY + guiSpacing;
@@ -245,7 +277,7 @@ public class SoundBites extends PApplet
         yPos += guiSizeY + guiSpacing;
         lstInputs = gui.addDropdownList("input")
                 .setPosition(xPos, yPos + guiSizeY)
-                .setSize(guiMenuW, guiSizeY * (2 + audioManager.getInputs().size()))
+                .setSize(guiMenuW, guiSizeY * (3 + audioManager.getInputs().size()))
                 .setItemHeight(guiSizeY)
                 .setBarHeight(guiSizeY)
                 .addListener(new controlP5.ControlListener()
@@ -258,6 +290,10 @@ public class SoundBites extends PApplet
                 {
                     selectSpectrumFile();
                 }
+                else if ( iInput == -2 )
+                {
+                    selectAudioInput(null);
+                }
                 else
                 {
                     selectAudioInput(audioManager.getInput(iInput));
@@ -266,6 +302,7 @@ public class SoundBites extends PApplet
         });
         // fill dropdown list with entries
         lstInputs.getCaptionLabel().getStyle().paddingTop = 5;
+        lstInputs.addItem("None", -2);
         lstInputs.addItem("Spectrum File", -1);
         int idx = 0;
         for ( analyser.AudioInput input : audioManager.getInputs() )
@@ -277,27 +314,6 @@ public class SoundBites extends PApplet
             }
             lstInputs.addItem(name, idx);
             idx++;
-        }
-        
-        // Dropdown list for shaper selection
-        lstShapers = gui.addDropdownList("shaper")
-                .setPosition((width - guiMenuW) / 2, guiSpacing + guiSizeY)
-                .setSize(guiMenuW, guiSizeY * (2 + shaperList.size()))
-                .setItemHeight(guiSizeY)
-                .setBarHeight(guiSizeY)
-                .addListener(new controlP5.ControlListener()
-        {
-            @Override
-            public void controlEvent(ControlEvent ce)
-            {
-                int iInput = (int) ce.getValue();
-                selectShaper(shaperList.get(iInput));
-            }
-        });
-        lstShapers.getCaptionLabel().getStyle().paddingTop = 5;
-        for ( int i = 0 ; i < shaperList.size() ; i++ )
-        {
-            lstShapers.addItem(shaperList.get(i).getName(), i);
         }
         
         // Slider for live input volume there as well
@@ -318,11 +334,19 @@ public class SoundBites extends PApplet
             }
         });
         
-        // Label with filename at the bottom left
+        // Label with filename and FPS at the bottom left
+        lblFps = gui.addTextlabel("fps", "FPS: ---")
+                .setPosition((width - guiMenuW) / 2, guiSpacing)
+                .setSize(guiMenuW, 20);
+        
         lblFilename = gui.addTextlabel("filename", "Filename: ---")
                 .setPosition(guiSpacing, height - guiSizeY - guiSpacing)
                 .setSize(width - 20, 20);
+
         gui.setAutoDraw(false);
+        
+        lstMappers.bringToFront();
+        lstShapers.bringToFront();
     }
 
     
@@ -337,7 +361,7 @@ public class SoundBites extends PApplet
         // do we have to completely recalculate the 3D shape?
         if ( (recomputeTime >= 0) && (recomputeTime < millis()) )
         {
-            calculateShape();
+            updateShape();
         }
 
         hint(ENABLE_DEPTH_TEST);
@@ -406,6 +430,7 @@ public class SoundBites extends PApplet
         
         if ( vars.guiEnabled )
         {
+            lblFps.setStringValue(String.format("FPS: %.1f", frameRate));
             gui.draw();
         }
     }
@@ -507,13 +532,17 @@ public class SoundBites extends PApplet
         {
             vars.guiEnabled = !vars.guiEnabled;
         }
+        if ( key == 'a' )
+        {
+            reportAudioProperties();
+        }
     }
     
     
     /**
      * Selects the next render mode.
      */
-    public void toggleRenderMode()
+    private void toggleRenderMode()
     {
         switch ( vars.renderMode )
         {
@@ -529,7 +558,7 @@ public class SoundBites extends PApplet
      * 
      * @param mode  the mode to select
      */
-    public void setRenderMode(RenderMode mode)
+    private void setRenderMode(RenderMode mode)
     {
         if ( vars.renderMode != mode )
         {
@@ -551,7 +580,7 @@ public class SoundBites extends PApplet
     /**
      * Shows a load dialog to select a spectrum file.
      */
-    public void selectSpectrumFile()
+    private void selectSpectrumFile()
     {
         selectInput("Select the Spectrum file to load", "openSpectrumFile", new File(dataPath(".")));
     }
@@ -562,7 +591,7 @@ public class SoundBites extends PApplet
      * 
      * @param file the file to open
      */
-    public void openSpectrumFile(File file)
+    private void openSpectrumFile(File file)
     {
         if ( file != null )
         {
@@ -614,7 +643,7 @@ public class SoundBites extends PApplet
     /**
      * Saves the 3D shape as an STL file.
      */
-    public void saveStlFile()
+    private void saveStlFile()
     {
         if ( spectrumFile == null )
         {
@@ -638,61 +667,6 @@ public class SoundBites extends PApplet
     
     
     /**
-     * Switches to using realtime audio spectrum.
-     */
-    public void selectRealtimeSpectrum()
-    {
-        int spectrumCount = audioAnalyser.getSpectrumBandCount();
-        spectrumData = new float[240][spectrumCount];
-        spectrumFile = null;
-        inputIdx = 0;
-        sldVolume.setVisible(inputGain != null);
-        btnPause.setVisible(true);
-        calculateShape();
-    }
-    
-    
-    /**
-     * Selects plain colour mapping.
-     */
-    public void selectPlainMapping()
-    {
-        Color c = JColorChooser.showDialog(frame, "Select Colour", mapperPlain.getColour());
-        if ( c != null )
-        {
-            mapperPlain = new PlainColourMapper(c);
-            shaper.setColourMapper(mapperPlain);
-        }
-    }
-    
-    
-    /**
-     * Selects image pattern mapping.
-     */
-    public void selectPatternMapping()
-    {
-        FileDialog fc = new FileDialog(frame, "Select Image", FileDialog.LOAD);
-        fc.setVisible(true);
-        String f = fc.getFile();
-        if ( f != null )
-        {
-            try
-            {
-                mapper = new ImageColourMapper(new File(fc.getDirectory(), f));
-                shaper.setColourMapper(mapper);
-            }
-            catch (IOException e)
-            {
-                JOptionPane.showMessageDialog(frame, 
-                        "Could not load image.\n" + e.getMessage(),
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
-
-    
-    /**
      * Selects an audio input.
      * 
      * @param input  the input to use
@@ -703,11 +677,6 @@ public class SoundBites extends PApplet
         audioAnalyser.detachFromAudio();
         if ( minim != null )
         {
-            AudioInput in = minim.getLineIn();
-            if ( in != null ) 
-            { 
-                in.close(); 
-            }
             minim.stop();
         }
         
@@ -718,7 +687,6 @@ public class SoundBites extends PApplet
             minim.setInputMixer(input.getMixer());
             // attach to audio analyser
             audioAnalyser.attachToAudio(minim.getLineIn());
-            System.out.println("Selected Audio Input: " + input);
             // get volume/gain controller
             inputGain = input.getGainControl();
             if ( inputGain != null )
@@ -726,19 +694,27 @@ public class SoundBites extends PApplet
                 sldVolume.setRange(inputGain.getMinimum(), inputGain.getMaximum());
             }
 
-            // update GUI
+            int spectrumCount = audioAnalyser.getSpectrumBandCount();
+            spectrumData = new float[240][spectrumCount];
+            spectrumFile = null;
+            inputIdx = 0;
             lblFilename.setStringValue("Realtime Spectrum from " + input);
-            selectRealtimeSpectrum();
         }
         else
         {
             // no input selected
-            lblFilename.setStringValue("No Input Selected");
-            inputGain    = null;
             spectrumData = new float[240][64]; // dummy data
-            spectrumFile = null;        
+            spectrumFile = null;     
+            inputGain    = null; 
+            lblFilename.setStringValue("No Input Selected");
         }
+        
+        // common code, mainly for updating the GUI
+        btnPause.setVisible(input != null);
+        sldVolume.setVisible(inputGain != null);
         lstInputs.setCaptionLabel("Select Input");
+        System.out.println("Selected Audio Input: " + ((input != null) ? input : "none"));
+        updateShape();
     }
     
     
@@ -747,8 +723,10 @@ public class SoundBites extends PApplet
      * 
      * @param s the new shaper to use
      */
-    void selectShaper(Shaper s)
+    private void selectShaper(Shaper s)
     {
+        if ( shaper == s ) return;
+        
         if ( shaper != null )
         {
             for ( Controller c : shaper.getControllers() )
@@ -763,7 +741,6 @@ public class SoundBites extends PApplet
         if ( shaper != null )
         {
             shaper.initialise(gui);
-            shaper.setColourMapper(mapper);
             int y = guiSpacing; 
             for ( Controller c : shaper.getControllers() )
             {
@@ -773,16 +750,78 @@ public class SoundBites extends PApplet
                 c.addListener(RECALC_LISTENER);
             }
             
+            shaper.setColourMapper(mapper);
             shaper.createSurface(spectrumData);
-            lstShapers.setCaptionLabel("Shaper: " + shaper.getName());
+            lstShapers.setCaptionLabel("Shaper: " + shaper.toString());
+            System.out.println("Selected Shaper: " + shaper.toString());
         }
     }
         
     
     /**
-     * Calculates the whole 3D shape.
+     * Selects a new colour mapper.
+     * 
+     * @param newMapper the new mapper to use
      */
-    public void calculateShape()
+    private void selectMapper(ColourMapper newMapper)
+    {
+        if ( mapper == newMapper ) return;
+       
+        mapper = newMapper;
+        if ( shaper != null ) 
+        {
+            shaper.setColourMapper(mapper);
+        }
+        lstMappers.setCaptionLabel("Mapper: " + mapper.toString());
+        System.out.println("Selected Mapper: " + mapper.toString());
+        updateShape();
+    }
+    
+    
+    /**
+     * Selects plain colour mapping.
+     */
+    private void selectPlainMapping()
+    {
+//        Color c = JColorChooser.showDialog(frame, "Select Colour", mapperPlain.getColour());
+//        if ( c != null )
+//        {
+//            mapperPlain = new PlainColourMapper(c);
+//            shaper.setColourMapper(mapperPlain);
+//        }
+    }
+    
+    
+    /**
+     * Selects image pattern mapping.
+     */
+    private void selectPatternMapping()
+    {
+//        FileDialog fc = new FileDialog(frame, "Select Image", FileDialog.LOAD);
+//        fc.setVisible(true);
+//        String f = fc.getFile();
+//        if ( f != null )
+//        {
+//            try
+//            {
+//                mapper = new ImageColourMapper(new File(fc.getDirectory(), f));
+//                shaper.setColourMapper(mapper);
+//            }
+//            catch (IOException e)
+//            {
+//                JOptionPane.showMessageDialog(frame, 
+//                        "Could not load image.\n" + e.getMessage(),
+//                        "Error",
+//                        JOptionPane.ERROR_MESSAGE);
+//            }
+//        }
+    }
+
+    
+    /**
+     * Updates the whole 3D shape.
+     */
+    private void updateShape()
     {
         if ( (shaper == null) || 
              ( (spectrumData == null) && !btnPause.getState()) ) return;
@@ -802,7 +841,7 @@ public class SoundBites extends PApplet
     @Override
     public boolean sketchFullScreen()
     {
-        return false;//true;
+        return runInFullscreen;
     }
 
     
@@ -823,6 +862,20 @@ public class SoundBites extends PApplet
     }
     
     
+    private void reportAudioProperties()
+    {
+        JTextArea txt = new JTextArea(audioManager.reportAudioCapabilities());
+        txt.setEditable(false);
+        JScrollPane scrl = new JScrollPane(txt);
+        scrl.setPreferredSize(new Dimension(700, 400));
+        JOptionPane.showMessageDialog(
+                frame, 
+                scrl,
+                "Audio Capabilities", 
+                JOptionPane.PLAIN_MESSAGE);
+    }
+    
+    
     /**
      * Main method for the program.
      * 
@@ -830,10 +883,10 @@ public class SoundBites extends PApplet
      */
     public static void main(String[] args)
     {
-        // setMicrophoneSensitivity(10);
+        // create program instance
+        final SoundBites p = new SoundBites(checkFullscreen());
 
-        final SoundBites p = new SoundBites();
-
+        // in case of an exception, show a swing dialog box
         Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
             @Override
             public void uncaughtException(Thread t, Throwable e) {
@@ -860,6 +913,24 @@ public class SoundBites extends PApplet
     }
     
     
+    private static boolean checkFullscreen()
+    {
+        // check if fullscreen mode is desired
+        int choice = JOptionPane.showConfirmDialog(null,
+                        "Do you want to run the program in fullscreen mode?",
+                        "Run in Fullscreen Mode?",
+                        JOptionPane.YES_NO_CANCEL_OPTION);
+        if ( (choice == JOptionPane.CLOSED_OPTION) ||
+             (choice == JOptionPane.CANCEL_OPTION) ) 
+        {
+            // User doesn't want to run this at all
+            System.exit(0); 
+        }
+        
+        return choice == JOptionPane.YES_OPTION;
+    }
+    
+    
     /**
      * Inner control listener that triggers shaper recalculation when parameters are adjusted
      */
@@ -878,11 +949,12 @@ public class SoundBites extends PApplet
     
     
     // permanent GUI controls
+    private boolean       runInFullscreen;
     private ControlP5     gui;
-    private Textlabel     lblFilename;
+    private Textlabel     lblFilename, lblFps;
     private Button        btnRenderMode;
     private Toggle        btnPause, btnSplit;
-    private DropdownList  lstInputs, lstShapers;
+    private DropdownList  lstInputs, lstShapers, lstMappers;
     private Slider        sldVolume;
 
     // GUI spacing and sizes
@@ -902,11 +974,11 @@ public class SoundBites extends PApplet
     private float   cameraZoom;
     private Skybox  skybox;
     
-    // the shaper module
-    private List<Shaper>      shaperList;
-    private Shaper            shaper;
-    private ColourMapper      mapper;
-    private PlainColourMapper mapperPlain;
+    // the shaper and colour mapper modules
+    private List<Shaper>       shaperList;
+    private Shaper             shaper;
+    private List<ColourMapper> mapperList;
+    private ColourMapper       mapper;
     
     // timestamp to trigger recalculation
     private long        recomputeTime;
