@@ -3,8 +3,9 @@ package analyser;
 import javax.sound.sampled.CompoundControl;
 import javax.sound.sampled.Control;
 import javax.sound.sampled.FloatControl;
+import javax.sound.sampled.Line;
+import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
-import javax.sound.sampled.Port;
 
 /**
  * Class for an audio input, including the gain controller.
@@ -20,12 +21,21 @@ public class AudioInput
      * @param port  the port mixer
      * @param mixer the line mixer
      */
-    public AudioInput(Port port, Mixer mixer)
+    public AudioInput(Line line, Mixer mixer)
     {
-        this.port  = port;
+        this.line  = line;
         this.mixer = mixer;
         
-        findGainControl();
+        try
+        {
+            line.open();
+            findGainControl();
+            line.close();
+        }
+        catch (LineUnavailableException e)
+        {
+            // do nothing
+        }
     }
     
     
@@ -53,15 +63,16 @@ public class AudioInput
     
     private void findGainControl()
     {
-        for ( Control portCtrl : port.getControls() )
+        for ( Control lineCtrl : line.getControls() )
         {
-            if ( portCtrl.getType().equals(FloatControl.Type.MASTER_GAIN) )
+            if ( lineCtrl.getType().equals(FloatControl.Type.MASTER_GAIN) ||
+                 lineCtrl.getType().equals(FloatControl.Type.VOLUME) )
             {
-                gainControl = (FloatControl) portCtrl;
+                gainControl = (FloatControl) lineCtrl;
             }
-            else if ( portCtrl instanceof CompoundControl )
+            else if ( lineCtrl instanceof CompoundControl )
             {
-                CompoundControl cctrl = (CompoundControl) portCtrl;
+                CompoundControl cctrl = (CompoundControl) lineCtrl;
                 for ( Control ctrl : cctrl.getMemberControls() )
                 {
                     if ( ctrl.getType().equals(FloatControl.Type.VOLUME) )
@@ -82,7 +93,7 @@ public class AudioInput
         return mixer.getMixerInfo().getName();
     }
     
-    private Port         port;
+    private Line         line;
     private Mixer        mixer;
     private FloatControl gainControl;
 }

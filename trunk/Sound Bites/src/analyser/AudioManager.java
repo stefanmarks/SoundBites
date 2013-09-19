@@ -28,7 +28,13 @@ public class AudioManager
     public AudioManager()
     {
         //reportAudioCapabilities();
-        collectMixerInformation();
+        collectPortMixerInformation();
+        
+        if ( audioInputs.isEmpty() )
+        {
+            // could not find any ports, now search lines
+            collectLineMixerInformation();
+        }
     }
     
     
@@ -58,7 +64,7 @@ public class AudioManager
     /**
      * Gather information about mixer ports.
      */
-    private void collectMixerInformation()
+    private void collectPortMixerInformation()
     {
         audioInputs = new LinkedList<AudioInput>();
         
@@ -76,7 +82,6 @@ public class AudioManager
                     try
                     {
                         port = (Port) mixer.getLine(info);
-                        port.open();
                     }
                     catch ( LineUnavailableException e )
                     {
@@ -112,6 +117,22 @@ public class AudioManager
             }
         }
         return retMixer;
+    }
+    
+    
+    private void collectLineMixerInformation()
+    {
+        for ( Mixer.Info mixerInfo : AudioSystem.getMixerInfo() )
+        {
+            String name = mixerInfo.getName().toLowerCase();
+            if ( name.contains("microp") || 
+                 name.contains("input")  ||
+                 (name.contains("line") && name.contains("in")) )
+            {
+                Mixer mixer = AudioSystem.getMixer(mixerInfo);
+                audioInputs.add(new AudioInput(mixer, mixer));
+            }
+        }
     }
     
     
