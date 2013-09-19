@@ -351,15 +351,6 @@ public class SoundBites extends PApplet
         gl.glMatrixMode(GL2.GL_MODELVIEW);
         gl.glLoadIdentity();
 
-        // set up lighting
-        gl.glEnable(GL2.GL_LIGHT0);
-        float[] ambientLight = { 0.1f, 0.1f, 0.1f };    // little ambient light
-        gl.glLightModelfv(GL2.GL_LIGHT_MODEL_AMBIENT, ambientLight, 0);
-        float[] diffuseLight = { 1.0f, 1.0f, 1.0f };    // white diffuse...
-        gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_DIFFUSE, diffuseLight, 0);
-        float[] lightPos = { 0.0f, 1.0f, 1.0f, 0.0f }; // ...directional light
-        gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_POSITION, lightPos, 0);
-
         // draw skybox (uses only rotation of camera)
         if ( skybox != null )
         {
@@ -369,6 +360,15 @@ public class SoundBites extends PApplet
             skybox.render(gl);
             gl.glPopMatrix();
         }
+        
+        // set up lighting
+        gl.glEnable(GL2.GL_LIGHT0);
+        float[] ambientLight = { 0.1f, 0.1f, 0.1f };    // little ambient light
+        gl.glLightModelfv(GL2.GL_LIGHT_MODEL_AMBIENT, ambientLight, 0);
+        float[] diffuseLight = { 1.0f, 1.0f, 1.0f };    // white diffuse...
+        gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_DIFFUSE, diffuseLight, 0);
+        float[] lightPos = { 0.0f, 1.0f, 1.0f, 0.0f }; // ...directional light
+        gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_POSITION, lightPos, 0);
         
         // apply camera position and rotation
         gl.glTranslatef(-cameraPos.x, -cameraPos.y, -cameraPos.z);
@@ -762,7 +762,6 @@ public class SoundBites extends PApplet
             
             shaper.createSurface(spectrumData);
             lstShapers.setCaptionLabel("Shaper: " + shaper.getName());
-            lstShapers.bringToFront();
         }
     }
         
