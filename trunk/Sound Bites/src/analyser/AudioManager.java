@@ -27,6 +27,7 @@ public class AudioManager
      */
     public AudioManager()
     {
+        //reportAudioCapabilities();
         collectMixerInformation();
     }
     
@@ -46,11 +47,11 @@ public class AudioManager
      * Get a specific audio input.
      * 
      * @param idx the input index
-     * @return the audio input object
+     * @return the audio input object or null if the index is invalid
      */
     public AudioInput getInput(int idx)
     {
-        return audioInputs.get(idx);
+        return ((idx < 0) || (idx >= audioInputs.size())) ? null : audioInputs.get(idx);
     }
     
     
@@ -100,7 +101,7 @@ public class AudioManager
      */
     private Mixer findMatchingMixer(Mixer mixer1)
     {
-        Mixer retMixer = null;
+        Mixer retMixer = mixer1;
         for ( Mixer.Info mixerInfo : AudioSystem.getMixerInfo() )
         {
             Mixer mixer2 = AudioSystem.getMixer(mixerInfo);
@@ -143,35 +144,27 @@ public class AudioManager
             
             for (Line.Info thisLineInfo : thisMixer.getSourceLineInfo())
             {
-                if (thisLineInfo.getLineClass().getName().equals(
-                        "javax.sound.sampled.Port"))
+                Line thisLine = thisMixer.getLine(thisLineInfo);
+                thisLine.open();
+                System.out.println("  Source Port: "
+                        + thisLineInfo.toString());
+                for (Control thisControl : thisLine.getControls())
                 {
-                    Line thisLine = thisMixer.getLine(thisLineInfo);
-                    thisLine.open();
-                    System.out.println("  Source Port: "
-                            + thisLineInfo.toString());
-                    for (Control thisControl : thisLine.getControls())
-                    {
-                        System.out.println(reportControlCapabilities(thisControl));
-                    }
-                    thisLine.close();
+                    System.out.println(reportControlCapabilities(thisControl));
                 }
+                thisLine.close();
             }
             for (Line.Info thisLineInfo : thisMixer.getTargetLineInfo())
             {
-                if (thisLineInfo.getLineClass().getName().equals(
-                        "javax.sound.sampled.Port"))
+                Line thisLine = thisMixer.getLine(thisLineInfo);
+                thisLine.open();
+                System.out.println("  Target Port: "
+                        + thisLineInfo.toString());
+                for (Control thisControl : thisLine.getControls())
                 {
-                    Line thisLine = thisMixer.getLine(thisLineInfo);
-                    thisLine.open();
-                    System.out.println("  Target Port: "
-                            + thisLineInfo.toString());
-                    for (Control thisControl : thisLine.getControls())
-                    {
-                        System.out.println(reportControlCapabilities(thisControl));
-                    }
-                    thisLine.close();
+                    System.out.println(reportControlCapabilities(thisControl));
                 }
+                thisLine.close();
             }
         }
         catch (Exception e)
