@@ -1,7 +1,6 @@
 package shaper;
 
 import controlP5.ControlP5;
-import controlP5.Controller;
 import controlP5.Slider;
 import geom.Surface;
 import processing.core.PMatrix;

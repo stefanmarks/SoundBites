@@ -99,7 +99,7 @@ public class SoundBites extends PApplet
         cameraPos  = new PVector(0, 0, 700);
         cameraZoom = 1.0f;
 
-        skybox = new Skybox("/resources/skyboxes/SkyboxHexSphere.jpg", 2000);
+        skybox = new Skybox("/resources/skyboxes/SkyboxHexSphere_PoT.jpg", 2000);
         //skybox = new Skybox("/resources/skyboxes/SkyboxGridPlane.jpg", 2000);
     
         dragToRotate = false;
@@ -123,7 +123,6 @@ public class SoundBites extends PApplet
         setupOSC();
         createGUI();
         selectAudioInput(audioManager.getInput(0));
-        selectRealtimeSpectrum();
         selectShaper(shaperList.get(0));
     }
     
@@ -369,7 +368,7 @@ public class SoundBites extends PApplet
         gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_DIFFUSE, diffuseLight, 0);
         float[] lightPos = { 0.0f, 1.0f, 1.0f, 0.0f }; // ...directional light
         gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_POSITION, lightPos, 0);
-        
+
         // apply camera position and rotation
         gl.glTranslatef(-cameraPos.x, -cameraPos.y, -cameraPos.z);
         gl.glRotatef(vars.objRotX, 1, 0, 0);
@@ -709,23 +708,34 @@ public class SoundBites extends PApplet
             minim.stop();
         }
         
-        // create new Minim with new audio input
-        minim = new Minim(this);
-        minim.setInputMixer(input.getMixer());
-        // attach to audio analyser
-        audioAnalyser.attachToAudio(minim.getLineIn());
-        System.out.println("Selected Audio Input: " + input);
-        // get volume/gain controller
-        inputGain = input.getGainControl();
-        if ( inputGain != null )
+        if ( input != null )
         {
-            sldVolume.setRange(inputGain.getMinimum(), inputGain.getMaximum());
-        }
+            // create new Minim with new audio input
+            minim = new Minim(this);
+            minim.setInputMixer(input.getMixer());
+            // attach to audio analyser
+            audioAnalyser.attachToAudio(minim.getLineIn());
+            System.out.println("Selected Audio Input: " + input);
+            // get volume/gain controller
+            inputGain = input.getGainControl();
+            if ( inputGain != null )
+            {
+                sldVolume.setRange(inputGain.getMinimum(), inputGain.getMaximum());
+            }
 
-        // update GUI
+            // update GUI
+            lblFilename.setStringValue("Realtime Spectrum from " + input);
+            selectRealtimeSpectrum();
+        }
+        else
+        {
+            // no input selected
+            lblFilename.setStringValue("No Input Selected");
+            inputGain    = null;
+            spectrumData = new float[240][64]; // dummy data
+            spectrumFile = null;        
+        }
         lstInputs.setCaptionLabel("Select Input");
-        lblFilename.setStringValue("Realtime Spectrum from " + input);
-        selectRealtimeSpectrum();
     }
     
     
