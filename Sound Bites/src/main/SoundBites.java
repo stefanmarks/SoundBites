@@ -100,7 +100,7 @@ public class SoundBites extends PApplet
         cameraZoom = 1.0f;
 
         skybox = new Skybox("/resources/skyboxes/SkyboxHexSphere_PoT.jpg", 2000);
-        //skybox = new Skybox("/resources/skyboxes/SkyboxGridPlane.jpg", 2000);
+        //skybox = new Skybox("/resources/skyboxes/SkyboxGridPlane_PoT.jpg", 2000);
     
         dragToRotate = false;
         shaper       = null;

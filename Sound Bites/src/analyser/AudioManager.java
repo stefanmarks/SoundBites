@@ -62,7 +62,7 @@ public class AudioManager
     
     
     /**
-     * Gather information about mixer ports.
+     * Gather information about mixer input ports.
      */
     private void collectPortMixerInformation()
     {
@@ -120,6 +120,9 @@ public class AudioManager
     }
     
     
+    /**
+     * Gather information about any mixers that have "microp" or "line in" in their names.
+     */
     private void collectLineMixerInformation()
     {
         for ( Mixer.Info mixerInfo : AudioSystem.getMixerInfo() )
