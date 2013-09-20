@@ -5,20 +5,12 @@ import com.illposed.osc.OSCPacket;
 import com.illposed.osc.OSCParameter;
 import com.illposed.osc.OSCPortIn;
 import geom.RenderMode;
-import geom.Skybox;
 import geom.SkyboxEnum;
-import java.awt.Color;
 import java.util.LinkedList;
 import java.util.List;
 import processing.core.PVector;
-import shaper.ColourMapper;
-import shaper.ImageColourMapper;
-import shaper.PlainColourMapper;
-import shaper.Shaper;
-import shaper.Shaper_Cylinder;
-import shaper.Shaper_Ring;
-import shaper.Shaper_RingOld;
-import shaper.Shaper_Sphere;
+import shaper.ColourMapperEnum;
+import shaper.ShaperEnum;
 
 /**
  * 
@@ -34,36 +26,19 @@ public class SoundBiteVariables
         camPos  = new OSCParameter<PVector>("/cam/pos", new PVector(0, 0, 700)); paramList.add(camPos);
         camRot  = new OSCParameter<PVector>("/cam/rot", new PVector(0, 0, 0));   paramList.add(camRot);
         camZoom = new OSCParameter<Float>("/cam/zoom", 1.0f);                    paramList.add(camZoom);
-        
-        renderMode = new OSCParameter<RenderMode>("/render/mode", RenderMode.SOLID);   paramList.add(renderMode);
-        skybox     = new OSCParameter<SkyboxEnum>("/render/skybox", SkyboxEnum.BLACK); paramList.add(skybox);
-        
-        guiEnabled = new OSCParameter<Boolean>("/gui/enabled", true);               paramList.add(guiEnabled);
 
-        recordingPaused = new OSCParameter<Boolean>("/recording/paused", false);    paramList.add(recordingPaused);
+        shaper     = new OSCParameter<ShaperEnum>(      "/render/shaper", ShaperEnum.RING1);       paramList.add(shaper);
+        mapper     = new OSCParameter<ColourMapperEnum>("/render/mapper", ColourMapperEnum.WHITE); paramList.add(mapper);
+        skybox     = new OSCParameter<SkyboxEnum>(      "/render/skybox", SkyboxEnum.BLACK);       paramList.add(skybox);
+        renderMode = new OSCParameter<RenderMode>(      "/render/mode",   RenderMode.SOLID);       paramList.add(renderMode);
         
-        // populate shaper list
-        shaperList = new LinkedList<Shaper>();
-        shaperList.add(new Shaper_Ring());
-        shaperList.add(new Shaper_RingOld());
-        shaperList.add(new Shaper_Sphere());
-        shaperList.add(new Shaper_Cylinder());
-        shaper = null;
+        guiEnabled = new OSCParameter<Boolean>("/gui/enabled", true);         paramList.add(guiEnabled);
 
-        // populate Mapper list
-        mapperList = new LinkedList<ColourMapper>();
-        mapperList.add(new PlainColourMapper("White", Color.white));
-        mapperList.add(new PlainColourMapper("Brown", Color.decode("#603000")));
-        mapperList.add(ImageColourMapper.create("Greyscale", "GreyMap.png"));
-        mapperList.add(ImageColourMapper.create("Transparent", "TransparentMap.png"));
-        mapperList.add(ImageColourMapper.create("Spectrum", "SpectrumMap.png"));
-        mapperList.add(ImageColourMapper.create("Fire", "FireMap.png"));
-        mapperList.add(ImageColourMapper.create("Ice", "IceMap.png"));
-        mapper = null;
+        audioRecording = new OSCParameter<Boolean>("/audio/recording", true); paramList.add(audioRecording);
     }
 
     
-    public void register(OSCPortIn port)
+    public void registerWithInputPort(OSCPortIn port)
     {
         for ( OSCParameter param : paramList )
         {
@@ -99,24 +74,18 @@ public class SoundBiteVariables
     
     
     // camera parameters 
-    public OSCParameter<PVector> camPos;
-    public OSCParameter<PVector> camRot;
-    public OSCParameter<Float>   camZoom;
+    public OSCParameter<PVector>          camPos;
+    public OSCParameter<PVector>          camRot;
+    public OSCParameter<Float>            camZoom;
 
     // rendering parameters
-    public OSCParameter<RenderMode> renderMode;
-    public OSCParameter<SkyboxEnum> skybox;
-    
-    public List<Shaper>        shaperList;
-    public Shaper              shaper;
-    public static final String RENDER_SHAPER = "/render/shaper";
+    public OSCParameter<RenderMode>       renderMode;
+    public OSCParameter<ShaperEnum>       shaper;
+    public OSCParameter<ColourMapperEnum> mapper;
+    public OSCParameter<SkyboxEnum>       skybox;
 
-    public List<ColourMapper>  mapperList;
-    public ColourMapper        mapper;
-    public static final String RENDER_MAPPER = "/render/mapper";
-
-    public OSCParameter<Boolean> guiEnabled;
-    public OSCParameter<Boolean> recordingPaused;
+    public OSCParameter<Boolean>          guiEnabled;
+    public OSCParameter<Boolean>          audioRecording;
     
-    private List<OSCParameter>   paramList;
+    private List<OSCParameter> paramList;
 }

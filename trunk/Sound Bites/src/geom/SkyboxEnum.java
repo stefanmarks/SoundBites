@@ -30,7 +30,7 @@ public enum SkyboxEnum
     public Skybox getSkybox()
     {
         return skybox;
-    };
+    }
     
     private String name;
     private Skybox skybox;

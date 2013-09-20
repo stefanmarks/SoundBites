@@ -64,7 +64,7 @@ public class OSCParameter<Type> implements OSCListener
         {
             ((PVector) value).set((PVector) newValue);
         }
-        else
+        else if ( !value.equals(newValue) )
         {
             value = newValue;
         }
@@ -85,7 +85,7 @@ public class OSCParameter<Type> implements OSCListener
     @Override
     public void acceptMessage(Date time, OSCMessage message)
     {
-        Object[] params = message.getArguments();
+        Object[] params   = message.getArguments();
         if ( (value instanceof PVector) && (params.length > 2) )
         {
             ((PVector) value).set((Float) params[0], 
