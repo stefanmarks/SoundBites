@@ -1,20 +1,20 @@
 package main;
 
-import com.illposed.osc.OSCMessage;
+import com.illposed.osc.OSCPacket;
 import com.illposed.osc.OSCPortOut;
-import com.sun.jmx.snmp.tasks.Task;
+import geom.RenderMode;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import processing.core.PVector;
 
 /**
  * Dialog for remote control of SoundBite slaves.
@@ -30,11 +30,12 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     public SoundBiteRemoteController()
     {
         slaves = new DefaultListModel<Slave>();
-        params = new LinkedList<Object>();
+        vars   = new SoundBiteVariables();
         
         slaves.addElement(new Slave("localhost"));
         
         initComponents();
+        cbxRenderMode.setSelectedItem(vars.renderMode.get());
         
         animationTimer  = new Timer();
         cameraAnimation = new CameraRotationTask();
@@ -59,6 +60,7 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         chkGuiVisible = new javax.swing.JCheckBox();
         chkPaused = new javax.swing.JCheckBox();
         chkCameraRotation = new javax.swing.JCheckBox();
+        cbxRenderMode = new javax.swing.JComboBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("SoundBite Remote Controller");
@@ -130,6 +132,16 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         chkCameraRotation.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
         pnlButtons.add(chkCameraRotation);
 
+        cbxRenderMode.setModel(new DefaultComboBoxModel(RenderMode.values()));
+        cbxRenderMode.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                cbxRenderModeActionPerformed(evt);
+            }
+        });
+        pnlButtons.add(cbxRenderMode);
+
         getContentPane().add(pnlButtons);
 
         pack();
@@ -143,7 +155,8 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
      */
     private void chkGuiVisibleActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_chkGuiVisibleActionPerformed
     {//GEN-HEADEREND:event_chkGuiVisibleActionPerformed
-        sendMessage("/enableGUI", chkGuiVisible.isSelected());
+        vars.guiEnabled.set(!vars.guiEnabled.get());
+        sendUpdate();
     }//GEN-LAST:event_chkGuiVisibleActionPerformed
 
        
@@ -154,7 +167,8 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
      */ 
     private void chkPausedActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_chkPausedActionPerformed
     {//GEN-HEADEREND:event_chkPausedActionPerformed
-        sendMessage("/paused", chkPaused.isSelected());
+        vars.recordingPaused.set(!vars.recordingPaused.get());
+        sendUpdate();
     }//GEN-LAST:event_chkPausedActionPerformed
 
     
@@ -218,76 +232,44 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         }
     }//GEN-LAST:event_btnRemoveActionPerformed
 
-    
-    /**
-     * Sends a message to the slaves.
-     * 
-     * @param address the OSC address
-     * @param param1  the first parameter
-     * @param param2  the second parameter
-     */
-    private void sendMessage(String address, Object param1, Object param2)
-    {
-        params.clear();
-        params.add(param1);
-        params.add(param2);
-        sendMessage(address, params);
-    }
-    
-    
-    /**
-     * Sends a message to the slaves.
-     * 
-     * @param address the OSC address
-     * @param param1  the first parameter
-     */
-    private void sendMessage(String address, Object param1)
-    {
-        params.clear();
-        params.add(param1);
-        sendMessage(address, params);
-    }
+    private void cbxRenderModeActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_cbxRenderModeActionPerformed
+    {//GEN-HEADEREND:event_cbxRenderModeActionPerformed
+        vars.renderMode.set((RenderMode) cbxRenderMode.getSelectedItem());
+        sendUpdate();
+    }//GEN-LAST:event_cbxRenderModeActionPerformed
 
     
     /**
-     * Sends a message to the slaves.
-     * 
-     * @param address     the OSC address
-     * @param parameters  the list of message parameters
+     * Sends a message only with updated values.
      */
-    private void sendMessage(String address, Collection<Object> parameters)
+    private void sendUpdate()
     {
-        OSCMessage msg = new OSCMessage(address, parameters);
-        Object[] targets = lstSlaves.getSelectedValuesList().toArray();
+        OSCPacket packet  = vars.getUpdatePacket();
+        Object[]  targets = lstSlaves.getSelectedValuesList().toArray();
         if ( targets.length == 0 )
         {
             targets = slaves.toArray();
         }
         for ( Object slave : targets )
         {
-            ((Slave) slave).sendMessage(msg);
+            ((Slave) slave).sendPacket(packet);
         }
     }
     
     
     private class CameraRotationTask extends TimerTask
     {
-        public CameraRotationTask()
-        {
-            camRotX = 0;
-            camRotY = 0;
-        }
-        
         @Override
         public void run()
         {
             if ( !chkCameraRotation.isSelected() ) return;
             
-            camRotY += 0.25;
-            if ( camRotY > 360 ) { camRotY -= 360; }
-            camRotX = 30 * (float) Math.sin(Math.toRadians(camRotY));
-            sendMessage("/cam/rotX", camRotX);
-            sendMessage("/cam/rotY", camRotY);
+            PVector rot = vars.camRot.get();
+            rot.y += 0.125;
+            if ( rot.y > 360 ) { rot.y -= 360; }
+            rot.x = 30 * (float) Math.sin(Math.toRadians(rot.y));
+            vars.camRot.set(rot);
+            sendUpdate();
         }
         
         float camRotX, camRotY;
@@ -315,6 +297,7 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnAdd;
     private javax.swing.JButton btnRemove;
+    private javax.swing.JComboBox cbxRenderMode;
     private javax.swing.JCheckBox chkCameraRotation;
     private javax.swing.JCheckBox chkGuiVisible;
     private javax.swing.JCheckBox chkPaused;
@@ -324,7 +307,7 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     // End of variables declaration//GEN-END:variables
 
     private DefaultListModel<Slave>  slaves;
-    private LinkedList<Object>       params;
+    private SoundBiteVariables       vars;
     private Timer                    animationTimer;
     private CameraRotationTask       cameraAnimation;
     
@@ -357,16 +340,15 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
             return (port != null);
         }
         
-        public void sendMessage(OSCMessage message)
+        public void sendPacket(OSCPacket packet)
         {
             try
             {
-                port.send(message);
+                port.send(packet);
             }
             catch (IOException e)
             {
-                System.err.println("Could not send message '" + message.getAddress() +
-                                   "' to slave '" + address + "'");
+                System.err.println("Could not send packet to slave '" + address + "'");
             }
         }
         

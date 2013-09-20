@@ -3,8 +3,8 @@ package main;
 import analyser.AudioManager;
 import analyser.SpectrumAnalyser;
 import analyser.SpectrumInfo;
-import com.illposed.osc.OSCListener;
-import com.illposed.osc.OSCMessage;
+import com.illposed.osc.OSCParameter;
+import com.illposed.osc.OSCParameterListener;
 import com.illposed.osc.OSCPort;
 import com.illposed.osc.OSCPortIn;
 import controlP5.Button;
@@ -21,8 +21,6 @@ import ddf.minim.Minim;
 import geom.RenderMode;
 import static geom.RenderMode.SOLID;
 import static geom.RenderMode.WIREFRAME;
-import geom.Skybox;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -30,9 +28,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.SocketException;
-import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
 import javax.media.opengl.GL2;
 import javax.sound.sampled.FloatControl;
 import javax.swing.JOptionPane;
@@ -45,13 +40,7 @@ import static processing.core.PConstants.ENABLE_DEPTH_TEST;
 import processing.core.PVector;
 import processing.event.MouseEvent;
 import shaper.ColourMapper;
-import shaper.ImageColourMapper;
-import shaper.PlainColourMapper;
 import shaper.Shaper;
-import shaper.Shaper_Cylinder;
-import shaper.Shaper_Ring;
-import shaper.Shaper_RingOld;
-import shaper.Shaper_Sphere;
 
 /**
  * Program for visualising sound and creating STl files for 3D printing.
@@ -106,49 +95,39 @@ public class SoundBites extends PApplet
         
         frameRate(60);
 
-        vars = new OscVariables();
+        vars = new SoundBiteVariables();
         gui  = new ControlP5(this);
-        
-        cameraPos    = new PVector(0, 0, 700);
-        cameraZoom   = 1.0f;
         dragToRotate = false;
 
-        skybox = new Skybox("/resources/skyboxes/SkyboxHexSphere_PoT.jpg", 2000);
-        //skybox = new Skybox("/resources/skyboxes/SkyboxGridPlane_PoT.jpg", 2000);
-    
+        // setup parameter change listeners
+        vars.renderMode.registerListener(new OSCParameterListener<RenderMode>() {
+            @Override
+            public void valueChanged(OSCParameter<RenderMode> param)
+            {
+                updateRenderMode();
+            }
+        });
+        vars.recordingPaused.registerListener(new OSCParameterListener<Boolean>() {
+            @Override
+            public void valueChanged(OSCParameter<Boolean> param)
+            {
+                updatePauseMode();
+            }
+        });
+        
         // find inputs
         audioManager = new AudioManager();
-        
         // create audio analyser
         audioAnalyser = new SpectrumAnalyser(60, 10);
         inputIdx = 0; 
         
-        // populate shaper list
-        shaperList = new LinkedList<Shaper>();
-        shaperList.add(new Shaper_Ring());
-        shaperList.add(new Shaper_RingOld());
-        shaperList.add(new Shaper_Sphere());
-        shaperList.add(new Shaper_Cylinder());
-        shaper = null;
-
-        // populate Mapper list
-        mapperList = new LinkedList<ColourMapper>();
-        mapperList.add(new PlainColourMapper("White", Color.white));
-        mapperList.add(new PlainColourMapper("Brown", Color.decode("#603000")));
-        mapperList.add(ImageColourMapper.create("Greyscale", "GreyMap.png"));
-        mapperList.add(ImageColourMapper.create("Transparent", "TransparentMap.png"));
-        mapperList.add(ImageColourMapper.create("Spectrum", "SpectrumMap.png"));
-        mapperList.add(ImageColourMapper.create("Fire", "FireMap.png"));
-        mapperList.add(ImageColourMapper.create("Ice", "IceMap.png"));
-        mapper = mapperList.get(0);
-
         setupOSC();
         createGUI();
         
         selectAudioInput(null);
-        
-        selectShaper(shaperList.get(0));
-        selectMapper(mapperList.get(0));
+                        
+        selectShaper(vars.shaperList.get(0));
+        selectMapper(vars.mapperList.get(0));
     }
     
     
@@ -162,7 +141,7 @@ public class SoundBites extends PApplet
             // open port
             oscReceiver = new OSCPortIn(OSCPort.defaultSCOSCPort());
             // register listener (reacts to every incoming message)
-            oscReceiver.addListener(".*", vars);
+            vars.register(oscReceiver);
             oscReceiver.startListening();
         }
         catch (SocketException e)
@@ -183,7 +162,7 @@ public class SoundBites extends PApplet
         // Dropdown list for shaper selection
         lstShapers = gui.addDropdownList("shaper")
                 .setPosition(xPos, yPos + guiSizeY)
-                .setSize(guiMenuW, guiSizeY * (2 + shaperList.size()))
+                .setSize(guiMenuW, guiSizeY * (2 + vars.shaperList.size()))
                 .setItemHeight(guiSizeY)
                 .setBarHeight(guiSizeY)
                 .addListener(new controlP5.ControlListener()
@@ -192,20 +171,20 @@ public class SoundBites extends PApplet
             public void controlEvent(ControlEvent ce)
             {
                 int iInput = (int) ce.getValue();
-                selectShaper(shaperList.get(iInput));
+                selectShaper(vars.shaperList.get(iInput));
             }
         });
         lstShapers.getCaptionLabel().getStyle().paddingTop = 5;
-        for ( int i = 0 ; i < shaperList.size() ; i++ )
+        for ( int i = 0 ; i < vars.shaperList.size() ; i++ )
         {
-            lstShapers.addItem(shaperList.get(i).toString(), i);
+            lstShapers.addItem(vars.shaperList.get(i).toString(), i);
         }
 
         // Dropdown list for mapper selection
         yPos += guiSizeY + guiSpacing;
         lstMappers = gui.addDropdownList("mapper")
                 .setPosition(xPos, yPos + guiSizeY)
-                .setSize(guiMenuW, guiSizeY * (2 + mapperList.size()))
+                .setSize(guiMenuW, guiSizeY * (2 + vars.mapperList.size()))
                 .setItemHeight(guiSizeY)
                 .setBarHeight(guiSizeY)
                 .addListener(new controlP5.ControlListener()
@@ -214,13 +193,13 @@ public class SoundBites extends PApplet
             public void controlEvent(ControlEvent ce)
             {
                 int iInput = (int) ce.getValue();
-                selectMapper(mapperList.get(iInput));
+                selectMapper(vars.mapperList.get(iInput));
             }
         });
         lstMappers.getCaptionLabel().getStyle().paddingTop = 5;
-        for ( int i = 0 ; i < mapperList.size() ; i++ )
+        for ( int i = 0 ; i < vars.mapperList.size() ; i++ )
         {
-            lstMappers.addItem(mapperList.get(i).toString(), i);
+            lstMappers.addItem(vars.mapperList.get(i).toString(), i);
         }
 
         // Button for selecting render mode
@@ -270,7 +249,17 @@ public class SoundBites extends PApplet
         btnPause = gui.addToggle("Pause")
                 .setPosition(xPos, yPos)
                 .setSize(guiMenuW, guiSizeY)
-                ;
+                .addCallback(new controlP5.CallbackListener()
+        {
+            @Override
+            public void controlEvent(CallbackEvent e)
+            {
+                if (e.getAction() == ControlP5.ACTION_PRESSED)
+                {
+                    vars.recordingPaused.set(!vars.recordingPaused.get());
+                }
+            }
+        });
         btnPause.getCaptionLabel().setPadding(5, -14);
         
         // Drop Down list for selecting the input
@@ -373,17 +362,17 @@ public class SoundBites extends PApplet
         gl.glPushMatrix(); // save current state of matrix
         gl.glLoadIdentity();
         float aspect = (float) width / (float) height;
-        gl.glFrustum(-aspect, aspect, -1, +1, 1.5 *  cameraZoom, 5000);
+        gl.glFrustum(-aspect, aspect, -1, +1, 1.5 * vars.camZoom.get(), 5000);
         gl.glMatrixMode(GL2.GL_MODELVIEW);
         gl.glLoadIdentity();
 
         // draw skybox (uses only rotation of camera)
-        if ( skybox != null )
+        if ( vars.skybox != null )
         {
             gl.glPushMatrix();
-            gl.glRotatef(vars.objRotX, 1, 0, 0);
-            gl.glRotatef(vars.objRotY, 0, 1, 0);
-            skybox.render(gl);
+            gl.glRotatef(vars.camRot.get().x, 1, 0, 0);
+            gl.glRotatef(vars.camRot.get().y, 0, 1, 0);
+            vars.skybox.render(gl);
             gl.glPopMatrix();
         }
         
@@ -397,9 +386,9 @@ public class SoundBites extends PApplet
         gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_POSITION, lightPos, 0);
 
         // apply camera position and rotation
-        gl.glTranslatef(-cameraPos.x, -cameraPos.y, -cameraPos.z);
-        gl.glRotatef(vars.objRotX, 1, 0, 0);
-        gl.glRotatef(vars.objRotY, 0, 1, 0);
+        gl.glTranslatef(-vars.camPos.get().x, -vars.camPos.get().y, -vars.camPos.get().z);
+        gl.glRotatef(vars.camRot.get().x, 1, 0, 0);
+        gl.glRotatef(vars.camRot.get().y, 0, 1, 0);
         
         /*
         // draw coordinate cross
@@ -413,9 +402,9 @@ public class SoundBites extends PApplet
         */
         
         // animate and draw the shape
-        shaper.setSplitMode(btnSplit.getState());
-        shaper.update(inputIdx * 360 / spectrumData.length);
-        shaper.render(gl);
+        vars.shaper.setSplitMode(btnSplit.getState());
+        vars.shaper.update(inputIdx * 360 / spectrumData.length);
+        vars.shaper.render(gl);
 
         // undo transformations and depth testing for the GUI  
         gl.glPopMatrix();
@@ -428,7 +417,7 @@ public class SoundBites extends PApplet
             updateRealtimeSpectrum();
         }
         
-        if ( vars.guiEnabled )
+        if ( vars.guiEnabled.get() )
         {
             lblFps.setStringValue(String.format("FPS: %.1f", frameRate));
             gui.draw();
@@ -447,10 +436,10 @@ public class SoundBites extends PApplet
             int len = info.intensity.length;
 
             // only update shape when not paused
-            if ( !btnPause.getState() )
+            if ( !vars.recordingPaused.get() )
             {
                 System.arraycopy(info.intensity, 0, spectrumData[inputIdx], 0, len);
-                shaper.updateSurface(inputIdx, spectrumData[inputIdx]);
+                vars.shaper.updateSurface(inputIdx, spectrumData[inputIdx]);
                 inputIdx = (inputIdx + 1) % spectrumData.length;
                 // enable the surface to recalculate changed normals
             }
@@ -463,7 +452,7 @@ public class SoundBites extends PApplet
                 int x = width - guiSpacing - (len - i) * 2;
                 int y = height - guiSpacing;
                 int h = (int) (info.intensity[i] * 100);
-                int colour = shaper.getColourMapper().mapSpectrum(info.intensity, i);
+                int colour = vars.shaper.getColourMapper().mapSpectrum(info.intensity, i);
                 stroke((colour >> 16) & 0xFF, (colour >> 8) & 0xFF, colour & 0xFF, 255);
                 line(x, y, x, y-h);
             }
@@ -500,9 +489,11 @@ public class SoundBites extends PApplet
     {
         if ( dragToRotate )
         {
-            vars.objRotX += (float) (mouseY - pmouseY) / height * 180;
-            vars.objRotX  = constrain(vars.objRotX, -90, 90);
-            vars.objRotY += (float) (mouseX - pmouseX) / width * 360;
+            PVector rot = vars.camRot.get();
+            rot.x += (float) (mouseY - pmouseY) / height * 180;
+            rot.x  = constrain(rot.x, -90, 90);
+            rot.y += (float) (mouseX - pmouseX) / width * 360;
+            vars.camRot.set(rot);
         }
     }
 
@@ -515,10 +506,12 @@ public class SoundBites extends PApplet
     @Override
     public void mouseWheel(MouseEvent e)
     {
-        int c = e.getCount();
-        if      ( c > 0 ) { cameraZoom /= 1.05f; }
-        else if ( c < 0 ) { cameraZoom *= 1.05f; }
-        cameraZoom = constrain(cameraZoom, 0.25f, 5.0f);
+        int   c    = e.getCount();
+        float zoom = vars.camZoom.get();
+        if      ( c > 0 ) { zoom /= 1.05f; }
+        else if ( c < 0 ) { zoom *= 1.05f; }
+        zoom = constrain(zoom, 0.25f, 5.0f);
+        vars.camZoom.set(zoom);
     }
     
     
@@ -528,13 +521,11 @@ public class SoundBites extends PApplet
     @Override
     public void keyPressed()
     {
-        if ( key == 'g' )
+        switch ( key )
         {
-            vars.guiEnabled = !vars.guiEnabled;
-        }
-        if ( key == 'a' )
-        {
-            reportAudioProperties();
+            case 'a' : reportAudioProperties(); break;
+            case 'g' : vars.guiEnabled.set(!vars.guiEnabled.get()); break;
+            case 'r' : toggleRenderMode(); break;
         }
     }
     
@@ -544,38 +535,37 @@ public class SoundBites extends PApplet
      */
     private void toggleRenderMode()
     {
-        switch ( vars.renderMode )
+        RenderMode mode = vars.renderMode.get();
+        switch ( mode )
         {
-            case SOLID     : setRenderMode(RenderMode.WIREFRAME); break;
-            case WIREFRAME : setRenderMode(RenderMode.POINTS); break;
-            default:         setRenderMode(RenderMode.SOLID); break;
+            case SOLID     : mode = RenderMode.WIREFRAME; break;
+            case WIREFRAME : mode = RenderMode.POINTS; break;
+            default:         mode = RenderMode.SOLID; break;
         }
+        vars.renderMode.set(mode); // this will automatically call updateRenderMode
     }
 
     
     /**
-     * Sets a specific render mode.
-     * 
-     * @param mode  the mode to select
+     * Called when the render mode has changed.
      */
-    private void setRenderMode(RenderMode mode)
+    private void updateRenderMode()
     {
-        if ( vars.renderMode != mode )
-        {
-            vars.renderMode = mode;
-            String txtMode;
-            switch ( vars.renderMode )
-            {
-                case WIREFRAME : txtMode = "Wireframe"; break;
-                case POINTS    : txtMode = "Points"; break;
-                default:         txtMode = "Solid"; break;
-            }
-            shaper.setRenderMode(vars.renderMode);
-            btnRenderMode.setCaptionLabel("Render Mode: " + txtMode);
-            System.out.println("Selected " + txtMode + " render mode");
-        }
+        RenderMode mode = vars.renderMode.get();
+        vars.shaper.setRenderMode(mode);
+        btnRenderMode.setCaptionLabel("Render Mode: " + mode);
+        System.out.println("Selected " + mode + " render mode");
     }
     
+    
+    /**
+     * Called when the pause mode has changed.
+     */
+    private void updatePauseMode()
+    {
+        btnPause.setState(vars.recordingPaused.get());
+    }
+
     
     /**
      * Shows a load dialog to select a spectrum file.
@@ -661,7 +651,7 @@ public class SoundBites extends PApplet
             return;
         }
         
-        shaper.writeSTL(w);
+        vars.shaper.writeSTL(w);
         w.close();
     }
     
@@ -725,24 +715,24 @@ public class SoundBites extends PApplet
      */
     private void selectShaper(Shaper s)
     {
-        if ( shaper == s ) return;
+        if ( vars.shaper == s ) return;
         
-        if ( shaper != null )
+        if ( vars.shaper != null )
         {
-            for ( Controller c : shaper.getControllers() )
+            for ( Controller c : vars.shaper.getControllers() )
             {
                 c.removeListener(RECALC_LISTENER);
             }
-            shaper.deinitialise();
+            vars.shaper.deinitialise();
         }
         
-        shaper = s;
+        vars.shaper = s;
         
-        if ( shaper != null )
+        if ( vars.shaper != null )
         {
-            shaper.initialise(gui);
+            vars.shaper.initialise(gui);
             int y = guiSpacing; 
-            for ( Controller c : shaper.getControllers() )
+            for ( Controller c : vars.shaper.getControllers() )
             {
                 c.setPosition(guiSpacing, y);
                 c.setSize(guiControlsW, 20);
@@ -750,10 +740,10 @@ public class SoundBites extends PApplet
                 c.addListener(RECALC_LISTENER);
             }
             
-            shaper.setColourMapper(mapper);
-            shaper.createSurface(spectrumData);
-            lstShapers.setCaptionLabel("Shaper: " + shaper.toString());
-            System.out.println("Selected Shaper: " + shaper.toString());
+            vars.shaper.setColourMapper(vars.mapper);
+            vars.shaper.createSurface(spectrumData);
+            lstShapers.setCaptionLabel("Shaper: " + vars.shaper.toString());
+            System.out.println("Selected Shaper: " + vars.shaper.toString());
         }
     }
         
@@ -765,15 +755,15 @@ public class SoundBites extends PApplet
      */
     private void selectMapper(ColourMapper newMapper)
     {
-        if ( mapper == newMapper ) return;
+        if ( vars.mapper == newMapper ) return;
        
-        mapper = newMapper;
-        if ( shaper != null ) 
+        vars.mapper = newMapper;
+        if ( vars.shaper != null ) 
         {
-            shaper.setColourMapper(mapper);
+            vars.shaper.setColourMapper(vars.mapper);
         }
-        lstMappers.setCaptionLabel("Mapper: " + mapper.toString());
-        System.out.println("Selected Mapper: " + mapper.toString());
+        lstMappers.setCaptionLabel("Mapper: " + vars.mapper.toString());
+        System.out.println("Selected Mapper: " + vars.mapper.toString());
         updateShape();
     }
     
@@ -823,11 +813,11 @@ public class SoundBites extends PApplet
      */
     private void updateShape()
     {
-        if ( (shaper == null) || 
+        if ( (vars.shaper == null) || 
              ( (spectrumData == null) && !btnPause.getState()) ) return;
 
-        shaper.createSurface(spectrumData);
-        shaper.setRenderMode(vars.renderMode);
+        vars.shaper.createSurface(spectrumData);
+        vars.shaper.setRenderMode(vars.renderMode.get());
         recomputeTime = -1; // done
     }
 
@@ -966,19 +956,8 @@ public class SoundBites extends PApplet
     private OSCPortIn oscReceiver;
     
     // spectrum data
-    private File      spectrumFile;
-    private float[][] spectrumData;
-    
-    // Camera and skybox
-    private PVector cameraPos;
-    private float   cameraZoom;
-    private Skybox  skybox;
-    
-    // the shaper and colour mapper modules
-    private List<Shaper>       shaperList;
-    private Shaper             shaper;
-    private List<ColourMapper> mapperList;
-    private ColourMapper       mapper;
+    private File        spectrumFile;
+    private float[][]   spectrumData;
     
     // timestamp to trigger recalculation
     private long        recomputeTime;
@@ -991,58 +970,7 @@ public class SoundBites extends PApplet
     private Minim             minim;
     private FloatControl      inputGain;
     private SpectrumAnalyser  audioAnalyser;
-      
-    
-    public class OscVariables implements OSCListener
-    {
-        public OscVariables()
-        {
-            objRotX    = 30;
-            objRotY    = 0;
-            renderMode = RenderMode.SOLID;
-            guiEnabled = true;
-        }
-        
-        /**
-         * Receives, parses, and executes OSC messages.
-         * 
-         * @param time    the time of receiving a message
-         * @param message the message content
-         */
-        @Override
-        public void acceptMessage(Date time, OSCMessage message)
-        {
-            String   addr     = message.getAddress();
-            Object[] params   = message.getArguments();
-            int      parCount = params.length;
 
-            if ( parCount > 0 )
-            {
-                if ( addr.equals("/enableGUI") )
-                {
-                    guiEnabled = (Boolean) params[0];
-                }
-                else if ( addr.equals("/paused") )
-                {
-                    btnPause.setState((Boolean) params[0]);
-                }
-                else if ( addr.equals("/cam/rotX") )
-                {
-                    objRotX = (Float) params[0];                
-                }
-                else if ( addr.equals("/cam/rotY") )
-                {
-                    objRotY = (Float) params[0];                
-                }
-            }
-        }
-        
-        // object rotation    
-        public float       objRotX, objRotY;
-        public RenderMode  renderMode;
-        public boolean     guiEnabled;
-    }
-
-    private OscVariables vars;
+    private SoundBiteVariables vars;
 } 
 

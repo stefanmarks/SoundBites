@@ -125,7 +125,7 @@ public class Shaper_Ring extends AbstractShaper
             PVector v = surface.modifyVertex(idx, iF);
             v.set(x, y, 0);
             mtx.mult(v, v);
-            int col = mapper.mapSpectrum(spectrum, idxF);
+            int col = (mapper != null) ? mapper.mapSpectrum(spectrum, idxF) : 0xFFFFFF;
             surface.setVertexColour(idx, iF, col);
             
             int iF2 = (iF + freqCount2) % (freqCount2 + 1);
