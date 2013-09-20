@@ -95,7 +95,6 @@ public class OSCParameter<Type> implements OSCListener
         else if ( (value instanceof Enum) && (params.length > 0) )
         {
             String name    = (String) params[0];
-            System.out.println("recevied enum change " + name);
             Object enums[] = value.getClass().getEnumConstants();
             for ( Object e : enums )
             {
