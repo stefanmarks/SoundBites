@@ -3,6 +3,7 @@ package main;
 import com.illposed.osc.OSCPacket;
 import com.illposed.osc.OSCPortOut;
 import geom.RenderMode;
+import geom.SkyboxEnum;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketException;
@@ -61,6 +62,7 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         chkPaused = new javax.swing.JCheckBox();
         chkCameraRotation = new javax.swing.JCheckBox();
         cbxRenderMode = new javax.swing.JComboBox();
+        cbxSkybox = new javax.swing.JComboBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("SoundBite Remote Controller");
@@ -141,6 +143,16 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
             }
         });
         pnlButtons.add(cbxRenderMode);
+
+        cbxSkybox.setModel(new DefaultComboBoxModel(SkyboxEnum.values()));
+        cbxSkybox.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                cbxSkyboxActionPerformed(evt);
+            }
+        });
+        pnlButtons.add(cbxSkybox);
 
         getContentPane().add(pnlButtons);
 
@@ -232,11 +244,19 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         }
     }//GEN-LAST:event_btnRemoveActionPerformed
 
+    
     private void cbxRenderModeActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_cbxRenderModeActionPerformed
     {//GEN-HEADEREND:event_cbxRenderModeActionPerformed
         vars.renderMode.set((RenderMode) cbxRenderMode.getSelectedItem());
         sendUpdate();
     }//GEN-LAST:event_cbxRenderModeActionPerformed
+
+    
+    private void cbxSkyboxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_cbxSkyboxActionPerformed
+    {//GEN-HEADEREND:event_cbxSkyboxActionPerformed
+        vars.skybox.set((SkyboxEnum) cbxSkybox.getSelectedItem());
+        sendUpdate();
+    }//GEN-LAST:event_cbxSkyboxActionPerformed
 
     
     /**
@@ -298,6 +318,7 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     private javax.swing.JButton btnAdd;
     private javax.swing.JButton btnRemove;
     private javax.swing.JComboBox cbxRenderMode;
+    private javax.swing.JComboBox cbxSkybox;
     private javax.swing.JCheckBox chkCameraRotation;
     private javax.swing.JCheckBox chkGuiVisible;
     private javax.swing.JCheckBox chkPaused;

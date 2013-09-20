@@ -65,7 +65,7 @@ import shaper.Shaper;
  */
 public class SoundBites extends PApplet
 {
-    public static final String VERSION = "2.3.7b";
+    public static final String VERSION = "2.3.7c";
 
     /**
      * Creates an instance of the SoundBites program.
@@ -372,7 +372,7 @@ public class SoundBites extends PApplet
             gl.glPushMatrix();
             gl.glRotatef(vars.camRot.get().x, 1, 0, 0);
             gl.glRotatef(vars.camRot.get().y, 0, 1, 0);
-            vars.skybox.render(gl);
+            vars.skybox.get().getSkybox().render(gl);
             gl.glPopMatrix();
         }
         

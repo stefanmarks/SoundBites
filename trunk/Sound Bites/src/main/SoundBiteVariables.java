@@ -6,6 +6,7 @@ import com.illposed.osc.OSCParameter;
 import com.illposed.osc.OSCPortIn;
 import geom.RenderMode;
 import geom.Skybox;
+import geom.SkyboxEnum;
 import java.awt.Color;
 import java.util.LinkedList;
 import java.util.List;
@@ -30,11 +31,13 @@ public class SoundBiteVariables
     {
         paramList = new LinkedList<OSCParameter>();
         
-        camPos  = new OSCParameter<PVector>("cam/pos", new PVector(0, 0, 700)); paramList.add(camPos);
-        camRot  = new OSCParameter<PVector>("cam/rot", new PVector(0, 0, 0));   paramList.add(camRot);
-        camZoom = new OSCParameter<Float>("/cam/zoom", 1.0f);                   paramList.add(camZoom);
+        camPos  = new OSCParameter<PVector>("/cam/pos", new PVector(0, 0, 700)); paramList.add(camPos);
+        camRot  = new OSCParameter<PVector>("/cam/rot", new PVector(0, 0, 0));   paramList.add(camRot);
+        camZoom = new OSCParameter<Float>("/cam/zoom", 1.0f);                    paramList.add(camZoom);
         
-        renderMode = new OSCParameter<RenderMode>("render/mode", RenderMode.SOLID); paramList.add(renderMode);
+        renderMode = new OSCParameter<RenderMode>("/render/mode", RenderMode.SOLID);   paramList.add(renderMode);
+        skybox     = new OSCParameter<SkyboxEnum>("/render/skybox", SkyboxEnum.BLACK); paramList.add(skybox);
+        
         guiEnabled = new OSCParameter<Boolean>("/gui/enabled", true);               paramList.add(guiEnabled);
 
         recordingPaused = new OSCParameter<Boolean>("/recording/paused", false);    paramList.add(recordingPaused);
@@ -57,10 +60,6 @@ public class SoundBiteVariables
         mapperList.add(ImageColourMapper.create("Fire", "FireMap.png"));
         mapperList.add(ImageColourMapper.create("Ice", "IceMap.png"));
         mapper = null;
-        
-        // populate Skybox list
-        skybox = new Skybox("/resources/skyboxes/SkyboxHexSphere_PoT.jpg", 2000);
-        //skybox = new Skybox("/resources/skyboxes/SkyboxGridPlane_PoT.jpg", 2000);
     }
 
     
@@ -106,6 +105,7 @@ public class SoundBiteVariables
 
     // rendering parameters
     public OSCParameter<RenderMode> renderMode;
+    public OSCParameter<SkyboxEnum> skybox;
     
     public List<Shaper>        shaperList;
     public Shaper              shaper;
@@ -114,10 +114,6 @@ public class SoundBiteVariables
     public List<ColourMapper>  mapperList;
     public ColourMapper        mapper;
     public static final String RENDER_MAPPER = "/render/mapper";
-
-    public List<Skybox>        skyboxList;
-    public Skybox              skybox;
-    public static final String RENDER_SKYBOX = "/render/skybox";
 
     public OSCParameter<Boolean> guiEnabled;
     public OSCParameter<Boolean> recordingPaused;
