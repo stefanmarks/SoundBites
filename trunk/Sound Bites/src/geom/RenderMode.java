@@ -8,5 +8,18 @@ package geom;
  */
 public enum RenderMode 
 {
-    POINTS, WIREFRAME, SOLID;
+    POINTS("Points"), WIREFRAME("Wireframe"), SOLID("Solid");
+    
+    private RenderMode(String name)
+    {
+        this.name = name;
+    }
+    
+    @Override
+    public String toString()
+    {
+        return name;
+    }
+    
+    private String name;
 }
