@@ -21,6 +21,7 @@ import ddf.minim.Minim;
 import geom.RenderMode;
 import static geom.RenderMode.SOLID;
 import static geom.RenderMode.WIREFRAME;
+import geom.Skybox;
 import java.awt.Dimension;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -34,13 +35,14 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import processing.core.PApplet;
-import static processing.core.PApplet.println;
 import static processing.core.PConstants.DISABLE_DEPTH_TEST;
 import static processing.core.PConstants.ENABLE_DEPTH_TEST;
 import processing.core.PVector;
 import processing.event.MouseEvent;
 import shaper.ColourMapper;
+import shaper.ColourMapperEnum;
 import shaper.Shaper;
+import shaper.ShaperEnum;
 
 /**
  * Program for visualising sound and creating STl files for 3D printing.
@@ -61,11 +63,11 @@ import shaper.Shaper;
  * @version 2.3.5 - 13.09.2013: Added complete removal of GUI
  * @version 2.3.6 - 13.09.2013: Added zoom and OSC support. 
  * @version 2.3.7 - 15.09.2013: Added volume controller, refactored audio system, added fullscreen dialog, rearranged GUI
- * 
+ * @version 2.4.0 - 20.09.2013: Completed migration of central parameters and full remote control
  */
 public class SoundBites extends PApplet
 {
-    public static final String VERSION = "2.3.7c";
+    public static final String VERSION = "2.4.0a";
 
     /**
      * Creates an instance of the SoundBites program.
@@ -100,6 +102,20 @@ public class SoundBites extends PApplet
         dragToRotate = false;
 
         // setup parameter change listeners
+        vars.shaper.registerListener(new OSCParameterListener<ShaperEnum>() {
+            @Override
+            public void valueChanged(OSCParameter<ShaperEnum> param)
+            {
+                updateShaper(shaper);
+            }
+        });
+        vars.mapper.registerListener(new OSCParameterListener<ColourMapperEnum>() {
+            @Override
+            public void valueChanged(OSCParameter<ColourMapperEnum> param)
+            {
+                updateMapper();
+            }
+        });
         vars.renderMode.registerListener(new OSCParameterListener<RenderMode>() {
             @Override
             public void valueChanged(OSCParameter<RenderMode> param)
@@ -107,7 +123,7 @@ public class SoundBites extends PApplet
                 updateRenderMode();
             }
         });
-        vars.recordingPaused.registerListener(new OSCParameterListener<Boolean>() {
+        vars.audioRecording.registerListener(new OSCParameterListener<Boolean>() {
             @Override
             public void valueChanged(OSCParameter<Boolean> param)
             {
@@ -126,8 +142,8 @@ public class SoundBites extends PApplet
         
         selectAudioInput(null);
                         
-        selectShaper(vars.shaperList.get(0));
-        selectMapper(vars.mapperList.get(0));
+        shaper = null; updateShaper(shaper);
+        mapper = null; updateMapper();
     }
     
     
@@ -141,7 +157,7 @@ public class SoundBites extends PApplet
             // open port
             oscReceiver = new OSCPortIn(OSCPort.defaultSCOSCPort());
             // register listener (reacts to every incoming message)
-            vars.register(oscReceiver);
+            vars.registerWithInputPort(oscReceiver);
             oscReceiver.startListening();
         }
         catch (SocketException e)
@@ -160,9 +176,10 @@ public class SoundBites extends PApplet
               int yPos = guiSpacing;
                    
         // Dropdown list for shaper selection
+        int shaperCount = ShaperEnum.values().length;
         lstShapers = gui.addDropdownList("shaper")
                 .setPosition(xPos, yPos + guiSizeY)
-                .setSize(guiMenuW, guiSizeY * (2 + vars.shaperList.size()))
+                .setSize(guiMenuW, guiSizeY * (1 + shaperCount))
                 .setItemHeight(guiSizeY)
                 .setBarHeight(guiSizeY)
                 .addListener(new controlP5.ControlListener()
@@ -171,20 +188,21 @@ public class SoundBites extends PApplet
             public void controlEvent(ControlEvent ce)
             {
                 int iInput = (int) ce.getValue();
-                selectShaper(vars.shaperList.get(iInput));
+                vars.shaper.set(ShaperEnum.values()[iInput]); // listener will do the rest
             }
         });
         lstShapers.getCaptionLabel().getStyle().paddingTop = 5;
-        for ( int i = 0 ; i < vars.shaperList.size() ; i++ )
+        for ( int i = 0 ; i < shaperCount ; i++ )
         {
-            lstShapers.addItem(vars.shaperList.get(i).toString(), i);
+            lstShapers.addItem(ShaperEnum.values()[i].toString(), i);
         }
 
         // Dropdown list for mapper selection
         yPos += guiSizeY + guiSpacing;
+        int mapperCount = ColourMapperEnum.values().length;
         lstMappers = gui.addDropdownList("mapper")
                 .setPosition(xPos, yPos + guiSizeY)
-                .setSize(guiMenuW, guiSizeY * (2 + vars.mapperList.size()))
+                .setSize(guiMenuW, guiSizeY * (1 + mapperCount))
                 .setItemHeight(guiSizeY)
                 .setBarHeight(guiSizeY)
                 .addListener(new controlP5.ControlListener()
@@ -193,13 +211,13 @@ public class SoundBites extends PApplet
             public void controlEvent(ControlEvent ce)
             {
                 int iInput = (int) ce.getValue();
-                selectMapper(vars.mapperList.get(iInput));
+                vars.mapper.set(ColourMapperEnum.values()[iInput]); // listener will do the rest
             }
         });
         lstMappers.getCaptionLabel().getStyle().paddingTop = 5;
-        for ( int i = 0 ; i < vars.mapperList.size() ; i++ )
+        for ( int i = 0 ; i < mapperCount ; i++ )
         {
-            lstMappers.addItem(vars.mapperList.get(i).toString(), i);
+            lstMappers.addItem(ColourMapperEnum.values()[i].toString(), i);
         }
 
         // Button for selecting render mode
@@ -256,7 +274,7 @@ public class SoundBites extends PApplet
             {
                 if (e.getAction() == ControlP5.ACTION_PRESSED)
                 {
-                    vars.recordingPaused.set(!vars.recordingPaused.get());
+                    vars.audioRecording.set(!vars.audioRecording.get());
                 }
             }
         });
@@ -343,7 +361,7 @@ public class SoundBites extends PApplet
      * Draws a single frame.
      */
     @Override
-    public void draw()
+    public synchronized void draw()
     {
         background(0);
 
@@ -367,12 +385,13 @@ public class SoundBites extends PApplet
         gl.glLoadIdentity();
 
         // draw skybox (uses only rotation of camera)
-        if ( vars.skybox != null )
+        Skybox skybox = vars.skybox.get().getSkybox(); 
+        if ( skybox != null )
         {
             gl.glPushMatrix();
             gl.glRotatef(vars.camRot.get().x, 1, 0, 0);
             gl.glRotatef(vars.camRot.get().y, 0, 1, 0);
-            vars.skybox.get().getSkybox().render(gl);
+            skybox.render(gl);
             gl.glPopMatrix();
         }
         
@@ -402,10 +421,10 @@ public class SoundBites extends PApplet
         */
         
         // animate and draw the shape
-        vars.shaper.setSplitMode(btnSplit.getState());
-        vars.shaper.update(inputIdx * 360 / spectrumData.length);
-        vars.shaper.render(gl);
-
+        shaper.setSplitMode(btnSplit.getState());
+        shaper.update(inputIdx * 360 / spectrumData.length);
+        shaper.render(gl);
+        
         // undo transformations and depth testing for the GUI  
         gl.glPopMatrix();
         gl.glMatrixMode(GL2.GL_PROJECTION);
@@ -435,11 +454,11 @@ public class SoundBites extends PApplet
         {
             int len = info.intensity.length;
 
-            // only update shape when not paused
-            if ( !vars.recordingPaused.get() )
+            // only update shape when recording
+            if ( vars.audioRecording.get() )
             {
                 System.arraycopy(info.intensity, 0, spectrumData[inputIdx], 0, len);
-                vars.shaper.updateSurface(inputIdx, spectrumData[inputIdx]);
+                shaper.updateSurface(inputIdx, spectrumData[inputIdx]);
                 inputIdx = (inputIdx + 1) % spectrumData.length;
                 // enable the surface to recalculate changed normals
             }
@@ -452,7 +471,7 @@ public class SoundBites extends PApplet
                 int x = width - guiSpacing - (len - i) * 2;
                 int y = height - guiSpacing;
                 int h = (int) (info.intensity[i] * 100);
-                int colour = vars.shaper.getColourMapper().mapSpectrum(info.intensity, i);
+                int colour = mapper.mapSpectrum(info.intensity, i);
                 stroke((colour >> 16) & 0xFF, (colour >> 8) & 0xFF, colour & 0xFF, 255);
                 line(x, y, x, y-h);
             }
@@ -552,7 +571,7 @@ public class SoundBites extends PApplet
     private void updateRenderMode()
     {
         RenderMode mode = vars.renderMode.get();
-        vars.shaper.setRenderMode(mode);
+        shaper.setRenderMode(mode);
         btnRenderMode.setCaptionLabel("Render Mode: " + mode);
         System.out.println("Selected " + mode + " render mode");
     }
@@ -563,7 +582,7 @@ public class SoundBites extends PApplet
      */
     private void updatePauseMode()
     {
-        btnPause.setState(vars.recordingPaused.get());
+        btnPause.setState(!vars.audioRecording.get());
     }
 
     
@@ -585,7 +604,7 @@ public class SoundBites extends PApplet
     {
         if ( file != null )
         {
-            println("Opening " + file);
+            System.out.println("Opening " + file);
             String[] data = loadStrings(file);
             // how many lines are there (expluding header)
             int dataLen = data.length - 1;
@@ -619,8 +638,8 @@ public class SoundBites extends PApplet
                     spectrumData[specIdx][f] += Float.parseFloat(freqStr[f + 1]) / specStep;
                 }
             }
-            println("Read " + (data.length - 1) + " lines with " + spectrumData[0].length + " frequencies each");
-            println("Stored as " + spectrumData.length + " lines of spectrum data (compression=" + specStep + ")");
+            System.out.println("Read " + (data.length - 1) + " lines with " + spectrumData[0].length + " frequencies each");
+            System.out.println("Stored as " + spectrumData.length + " lines of spectrum data (compression=" + specStep + ")");
             recomputeTime = 0; // force recalculation
             spectrumFile = file;
             lblFilename.setText("Filename: " + file.getName());
@@ -647,11 +666,11 @@ public class SoundBites extends PApplet
         }
         catch (FileNotFoundException e)
         {
-            println("Could not write STL file (" + e + ").");
+            System.err.println("Could not write STL file (" + e + ").");
             return;
         }
         
-        vars.shaper.writeSTL(w);
+        shaper.writeSTL(w);
         w.close();
     }
     
@@ -709,62 +728,56 @@ public class SoundBites extends PApplet
     
     
     /**
-     * Selects a new shaper module.
-     * 
-     * @param s the new shaper to use
+     * Called when a new shaper module is selected.
      */
-    private void selectShaper(Shaper s)
+    private synchronized void updateShaper(Shaper oldShaper)
     {
-        if ( vars.shaper == s ) return;
-        
-        if ( vars.shaper != null )
+        if ( oldShaper != null )
         {
-            for ( Controller c : vars.shaper.getControllers() )
+            for ( Controller c : oldShaper.getControllers() )
             {
                 c.removeListener(RECALC_LISTENER);
             }
-            vars.shaper.deinitialise();
+            oldShaper.deinitialise();
         }
         
-        vars.shaper = s;
+        shaper = vars.shaper.get().getInstance();
         
-        if ( vars.shaper != null )
+        if ( shaper != null )
         {
-            vars.shaper.initialise(gui);
+            shaper.initialise(gui);
+            shaper.setColourMapper(mapper);
+            shaper.createSurface(spectrumData);
+
+            // add gui elements
             int y = guiSpacing; 
-            for ( Controller c : vars.shaper.getControllers() )
+            for ( Controller c : shaper.getControllers() )
             {
                 c.setPosition(guiSpacing, y);
                 c.setSize(guiControlsW, 20);
                 y += guiSizeY + guiSpacing;
                 c.addListener(RECALC_LISTENER);
             }
-            
-            vars.shaper.setColourMapper(vars.mapper);
-            vars.shaper.createSurface(spectrumData);
-            lstShapers.setCaptionLabel("Shaper: " + vars.shaper.toString());
-            System.out.println("Selected Shaper: " + vars.shaper.toString());
+            // update rest of GUI
+            lstShapers.setCaptionLabel("Shaper: " + shaper.toString());
+            System.out.println("Selected Shaper: " + shaper.toString());
         }
     }
         
     
     /**
-     * Selects a new colour mapper.
-     * 
-     * @param newMapper the new mapper to use
+     * Called when a new colour mapper is selected.
      */
-    private void selectMapper(ColourMapper newMapper)
+    private synchronized void updateMapper()
     {
-        if ( vars.mapper == newMapper ) return;
-       
-        vars.mapper = newMapper;
-        if ( vars.shaper != null ) 
+        mapper = vars.mapper.get().getInstance();
+        if ( shaper != null ) 
         {
-            vars.shaper.setColourMapper(vars.mapper);
+            shaper.setColourMapper(mapper);
         }
-        lstMappers.setCaptionLabel("Mapper: " + vars.mapper.toString());
-        System.out.println("Selected Mapper: " + vars.mapper.toString());
         updateShape();
+        lstMappers.setCaptionLabel("Mapper: " + mapper.toString());
+        System.out.println("Selected Mapper: " + mapper.toString());
     }
     
     
@@ -813,11 +826,11 @@ public class SoundBites extends PApplet
      */
     private void updateShape()
     {
-        if ( (vars.shaper == null) || 
+        if ( (shaper == null) || 
              ( (spectrumData == null) && !btnPause.getState()) ) return;
 
-        vars.shaper.createSurface(spectrumData);
-        vars.shaper.setRenderMode(vars.renderMode.get());
+        shaper.createSurface(spectrumData);
+        shaper.setRenderMode(vars.renderMode.get());
         recomputeTime = -1; // done
     }
 
@@ -955,6 +968,10 @@ public class SoundBites extends PApplet
 
     private OSCPortIn oscReceiver;
     
+    // shortcut to active shaper and mapper;
+    private Shaper       shaper;
+    private ColourMapper mapper;
+            
     // spectrum data
     private File        spectrumFile;
     private float[][]   spectrumData;

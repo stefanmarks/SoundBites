@@ -16,6 +16,8 @@ import javax.swing.DefaultListModel;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import processing.core.PVector;
+import shaper.ColourMapperEnum;
+import shaper.ShaperEnum;
 
 /**
  * Dialog for remote control of SoundBite slaves.
@@ -50,6 +52,7 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents()
     {
+        java.awt.GridBagConstraints gridBagConstraints;
 
         javax.swing.JPanel pnlSlaves = new javax.swing.JPanel();
         javax.swing.JScrollPane scrlSlaves = new javax.swing.JScrollPane();
@@ -57,12 +60,26 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         pnlSlaveButtons = new javax.swing.JPanel();
         btnAdd = new javax.swing.JButton();
         btnRemove = new javax.swing.JButton();
-        pnlButtons = new javax.swing.JPanel();
-        chkGuiVisible = new javax.swing.JCheckBox();
-        chkPaused = new javax.swing.JCheckBox();
-        chkCameraRotation = new javax.swing.JCheckBox();
+        javax.swing.JPanel pnlButtons = new javax.swing.JPanel();
+        javax.swing.JPanel pnlGUI = new javax.swing.JPanel();
+        javax.swing.JLabel lblGuiVisible = new javax.swing.JLabel();
+        btnGuiVisible = new javax.swing.JToggleButton();
+        javax.swing.JPanel pnlRendering = new javax.swing.JPanel();
+        javax.swing.JLabel lblShaper = new javax.swing.JLabel();
+        cbxShaper = new javax.swing.JComboBox();
+        javax.swing.JLabel lblMapper = new javax.swing.JLabel();
+        cbxMapper = new javax.swing.JComboBox();
+        javax.swing.JLabel lblRenderMode = new javax.swing.JLabel();
         cbxRenderMode = new javax.swing.JComboBox();
+        javax.swing.JLabel lblShapelblSkyboxr3 = new javax.swing.JLabel();
         cbxSkybox = new javax.swing.JComboBox();
+        javax.swing.JPanel pnlCamera = new javax.swing.JPanel();
+        javax.swing.JLabel lblCameraAutoRotate = new javax.swing.JLabel();
+        btnCameraAutoRotate = new javax.swing.JToggleButton();
+        javax.swing.JPanel pnlRecording = new javax.swing.JPanel();
+        javax.swing.JLabel lblRecordingPause = new javax.swing.JLabel();
+        btnAudioRecording = new javax.swing.JToggleButton();
+        javax.swing.JPanel pnlFill = new javax.swing.JPanel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("SoundBite Remote Controller");
@@ -102,39 +119,122 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
 
         getContentPane().add(pnlSlaves);
 
-        pnlButtons.setLayout(new java.awt.GridLayout(5, 0));
+        pnlButtons.setAlignmentY(0.0F);
+        pnlButtons.setLayout(new java.awt.GridBagLayout());
 
-        chkGuiVisible.setSelected(true);
-        chkGuiVisible.setText("GUI Visible:");
-        chkGuiVisible.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
-        chkGuiVisible.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
-        chkGuiVisible.addActionListener(new java.awt.event.ActionListener()
+        pnlGUI.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createTitledBorder("GUI"), javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        pnlGUI.setLayout(new java.awt.GridBagLayout());
+
+        lblGuiVisible.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        lblGuiVisible.setLabelFor(btnGuiVisible);
+        lblGuiVisible.setText("GUI visibility:");
+        lblGuiVisible.setMinimumSize(new java.awt.Dimension(100, 14));
+        lblGuiVisible.setPreferredSize(new java.awt.Dimension(100, 14));
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
+        gridBagConstraints.insets = new java.awt.Insets(0, 0, 0, 10);
+        pnlGUI.add(lblGuiVisible, gridBagConstraints);
+
+        btnGuiVisible.setSelected(true);
+        btnGuiVisible.setText("Visible");
+        btnGuiVisible.setMinimumSize(new java.awt.Dimension(50, 20));
+        btnGuiVisible.addActionListener(new java.awt.event.ActionListener()
         {
             public void actionPerformed(java.awt.event.ActionEvent evt)
             {
-                chkGuiVisibleActionPerformed(evt);
+                btnGuiVisibleActionPerformed(evt);
             }
         });
-        pnlButtons.add(chkGuiVisible);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.weightx = 10.0;
+        pnlGUI.add(btnGuiVisible, gridBagConstraints);
 
-        chkPaused.setText("Paused:");
-        chkPaused.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
-        chkPaused.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
-        chkPaused.addActionListener(new java.awt.event.ActionListener()
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.PAGE_START;
+        gridBagConstraints.weightx = 1.0;
+        pnlButtons.add(pnlGUI, gridBagConstraints);
+
+        pnlRendering.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createTitledBorder("Rendering"), javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        pnlRendering.setLayout(new java.awt.GridBagLayout());
+
+        lblShaper.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        lblShaper.setLabelFor(cbxShaper);
+        lblShaper.setText("Shaper:");
+        lblShaper.setMinimumSize(new java.awt.Dimension(100, 14));
+        lblShaper.setPreferredSize(new java.awt.Dimension(100, 14));
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
+        gridBagConstraints.insets = new java.awt.Insets(0, 0, 0, 10);
+        pnlRendering.add(lblShaper, gridBagConstraints);
+
+        cbxShaper.setModel(new DefaultComboBoxModel(ShaperEnum.values()));
+        cbxShaper.setMinimumSize(new java.awt.Dimension(50, 20));
+        cbxShaper.addActionListener(new java.awt.event.ActionListener()
         {
             public void actionPerformed(java.awt.event.ActionEvent evt)
             {
-                chkPausedActionPerformed(evt);
+                cbxShaperActionPerformed(evt);
             }
         });
-        pnlButtons.add(chkPaused);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.weightx = 10.0;
+        pnlRendering.add(cbxShaper, gridBagConstraints);
 
-        chkCameraRotation.setText("Rotate Camera:");
-        chkCameraRotation.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
-        chkCameraRotation.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
-        pnlButtons.add(chkCameraRotation);
+        lblMapper.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        lblMapper.setLabelFor(cbxMapper);
+        lblMapper.setText("Colour Mapper:");
+        lblMapper.setMinimumSize(new java.awt.Dimension(100, 14));
+        lblMapper.setPreferredSize(new java.awt.Dimension(100, 14));
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 10);
+        pnlRendering.add(lblMapper, gridBagConstraints);
+
+        cbxMapper.setModel(new DefaultComboBoxModel(ColourMapperEnum.values()));
+        cbxMapper.setMinimumSize(new java.awt.Dimension(50, 20));
+        cbxMapper.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                cbxMapperActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.weightx = 10.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
+        pnlRendering.add(cbxMapper, gridBagConstraints);
+
+        lblRenderMode.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        lblRenderMode.setLabelFor(cbxRenderMode);
+        lblRenderMode.setText("Render mode:");
+        lblRenderMode.setMinimumSize(new java.awt.Dimension(100, 14));
+        lblRenderMode.setPreferredSize(new java.awt.Dimension(100, 14));
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 10);
+        pnlRendering.add(lblRenderMode, gridBagConstraints);
 
         cbxRenderMode.setModel(new DefaultComboBoxModel(RenderMode.values()));
+        cbxRenderMode.setMinimumSize(new java.awt.Dimension(50, 20));
         cbxRenderMode.addActionListener(new java.awt.event.ActionListener()
         {
             public void actionPerformed(java.awt.event.ActionEvent evt)
@@ -142,9 +242,30 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
                 cbxRenderModeActionPerformed(evt);
             }
         });
-        pnlButtons.add(cbxRenderMode);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.weightx = 10.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
+        pnlRendering.add(cbxRenderMode, gridBagConstraints);
+
+        lblShapelblSkyboxr3.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        lblShapelblSkyboxr3.setLabelFor(cbxSkybox);
+        lblShapelblSkyboxr3.setText("Skybox:");
+        lblShapelblSkyboxr3.setMinimumSize(new java.awt.Dimension(100, 14));
+        lblShapelblSkyboxr3.setPreferredSize(new java.awt.Dimension(100, 14));
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 10);
+        pnlRendering.add(lblShapelblSkyboxr3, gridBagConstraints);
 
         cbxSkybox.setModel(new DefaultComboBoxModel(SkyboxEnum.values()));
+        cbxSkybox.setMinimumSize(new java.awt.Dimension(50, 20));
         cbxSkybox.addActionListener(new java.awt.event.ActionListener()
         {
             public void actionPerformed(java.awt.event.ActionEvent evt)
@@ -152,7 +273,106 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
                 cbxSkyboxActionPerformed(evt);
             }
         });
-        pnlButtons.add(cbxSkybox);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.weightx = 10.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
+        pnlRendering.add(cbxSkybox, gridBagConstraints);
+
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.PAGE_START;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
+        pnlButtons.add(pnlRendering, gridBagConstraints);
+
+        pnlCamera.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createTitledBorder("Camera"), javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        pnlCamera.setLayout(new java.awt.GridBagLayout());
+
+        lblCameraAutoRotate.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        lblCameraAutoRotate.setLabelFor(btnCameraAutoRotate);
+        lblCameraAutoRotate.setText("Auto Rotation:");
+        lblCameraAutoRotate.setMinimumSize(new java.awt.Dimension(100, 14));
+        lblCameraAutoRotate.setPreferredSize(new java.awt.Dimension(100, 14));
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
+        gridBagConstraints.insets = new java.awt.Insets(0, 0, 0, 10);
+        pnlCamera.add(lblCameraAutoRotate, gridBagConstraints);
+
+        btnCameraAutoRotate.setText("Off");
+        btnCameraAutoRotate.setMinimumSize(new java.awt.Dimension(50, 20));
+        btnCameraAutoRotate.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                btnCameraAutoRotateActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.weightx = 10.0;
+        pnlCamera.add(btnCameraAutoRotate, gridBagConstraints);
+
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.PAGE_START;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
+        pnlButtons.add(pnlCamera, gridBagConstraints);
+
+        pnlRecording.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createTitledBorder("Audio"), javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        pnlRecording.setLayout(new java.awt.GridBagLayout());
+
+        lblRecordingPause.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        lblRecordingPause.setLabelFor(btnAudioRecording);
+        lblRecordingPause.setText("Realtime Signal:");
+        lblRecordingPause.setMinimumSize(new java.awt.Dimension(100, 14));
+        lblRecordingPause.setPreferredSize(new java.awt.Dimension(100, 14));
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
+        gridBagConstraints.insets = new java.awt.Insets(0, 0, 0, 10);
+        pnlRecording.add(lblRecordingPause, gridBagConstraints);
+
+        btnAudioRecording.setSelected(true);
+        btnAudioRecording.setText("Recording");
+        btnAudioRecording.setMinimumSize(new java.awt.Dimension(50, 20));
+        btnAudioRecording.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                btnAudioRecordingActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.weightx = 10.0;
+        pnlRecording.add(btnAudioRecording, gridBagConstraints);
+
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.PAGE_START;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
+        pnlButtons.add(pnlRecording, gridBagConstraints);
+
+        pnlFill.setLayout(null);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.weighty = 1.0;
+        pnlButtons.add(pnlFill, gridBagConstraints);
 
         getContentPane().add(pnlButtons);
 
@@ -160,29 +380,7 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     }// </editor-fold>//GEN-END:initComponents
 
         
-    /**
-     * Sends a command to enable/disable the GUI of the slaves.
-     * 
-     * @param evt the event that triggered this action
-     */
-    private void chkGuiVisibleActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_chkGuiVisibleActionPerformed
-    {//GEN-HEADEREND:event_chkGuiVisibleActionPerformed
-        vars.guiEnabled.set(!vars.guiEnabled.get());
-        sendUpdate();
-    }//GEN-LAST:event_chkGuiVisibleActionPerformed
-
        
-    /**
-     * Sends a command that pauses/unpauses the slaves.
-     * 
-     * @param evt the event that triggered this action
-     */ 
-    private void chkPausedActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_chkPausedActionPerformed
-    {//GEN-HEADEREND:event_chkPausedActionPerformed
-        vars.recordingPaused.set(!vars.recordingPaused.get());
-        sendUpdate();
-    }//GEN-LAST:event_chkPausedActionPerformed
-
     
     /**
      * Adds a new slave to the list.
@@ -259,6 +457,44 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     }//GEN-LAST:event_cbxSkyboxActionPerformed
 
     
+    private void cbxShaperActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_cbxShaperActionPerformed
+    {//GEN-HEADEREND:event_cbxShaperActionPerformed
+        vars.shaper.set((ShaperEnum) cbxShaper.getSelectedItem());
+        sendUpdate();
+    }//GEN-LAST:event_cbxShaperActionPerformed
+
+    
+    private void cbxMapperActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_cbxMapperActionPerformed
+    {//GEN-HEADEREND:event_cbxMapperActionPerformed
+        vars.mapper.set((ColourMapperEnum) cbxMapper.getSelectedItem());
+        sendUpdate();
+    }//GEN-LAST:event_cbxMapperActionPerformed
+
+    
+    private void btnGuiVisibleActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_btnGuiVisibleActionPerformed
+    {//GEN-HEADEREND:event_btnGuiVisibleActionPerformed
+        boolean visible = btnGuiVisible.isSelected();
+        btnGuiVisible.setText(visible ? "Visible" : "Hidden");
+        vars.guiEnabled.set(visible);
+        sendUpdate();
+    }//GEN-LAST:event_btnGuiVisibleActionPerformed
+
+    
+    private void btnCameraAutoRotateActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_btnCameraAutoRotateActionPerformed
+    {//GEN-HEADEREND:event_btnCameraAutoRotateActionPerformed
+        btnCameraAutoRotate.setText(btnCameraAutoRotate.isSelected() ? "On" : "Off");
+    }//GEN-LAST:event_btnCameraAutoRotateActionPerformed
+
+    
+    private void btnAudioRecordingActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_btnAudioRecordingActionPerformed
+    {//GEN-HEADEREND:event_btnAudioRecordingActionPerformed
+        boolean paused = btnAudioRecording.isSelected();
+        vars.audioRecording.set(paused);
+        btnAudioRecording.setText(paused ? "Recording" : "Paused");
+        sendUpdate();
+    }//GEN-LAST:event_btnAudioRecordingActionPerformed
+
+    
     /**
      * Sends a message only with updated values.
      */
@@ -282,7 +518,7 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         @Override
         public void run()
         {
-            if ( !chkCameraRotation.isSelected() ) return;
+            if ( !btnCameraAutoRotate.isSelected() ) return;
             
             PVector rot = vars.camRot.get();
             rot.y += 0.125;
@@ -316,14 +552,15 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnAdd;
+    private javax.swing.JToggleButton btnAudioRecording;
+    private javax.swing.JToggleButton btnCameraAutoRotate;
+    private javax.swing.JToggleButton btnGuiVisible;
     private javax.swing.JButton btnRemove;
+    private javax.swing.JComboBox cbxMapper;
     private javax.swing.JComboBox cbxRenderMode;
+    private javax.swing.JComboBox cbxShaper;
     private javax.swing.JComboBox cbxSkybox;
-    private javax.swing.JCheckBox chkCameraRotation;
-    private javax.swing.JCheckBox chkGuiVisible;
-    private javax.swing.JCheckBox chkPaused;
     private javax.swing.JList lstSlaves;
-    private javax.swing.JPanel pnlButtons;
     private javax.swing.JPanel pnlSlaveButtons;
     // End of variables declaration//GEN-END:variables
 
