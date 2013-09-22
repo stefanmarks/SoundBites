@@ -19,9 +19,8 @@ import controlP5.Textlabel;
 import controlP5.Toggle;
 import ddf.minim.Minim;
 import geom.RenderMode;
-import static geom.RenderMode.SOLID;
-import static geom.RenderMode.WIREFRAME;
 import geom.Skybox;
+import geom.SkyboxEnum;
 import java.awt.Dimension;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -64,10 +63,11 @@ import shaper.ShaperEnum;
  * @version 2.3.6 - 13.09.2013: Added zoom and OSC support. 
  * @version 2.3.7 - 15.09.2013: Added volume controller, refactored audio system, added fullscreen dialog, rearranged GUI
  * @version 2.4.0 - 20.09.2013: Completed migration of central parameters and full remote control
+ * @version 2.4.1 - 23.09.2013: Added skybox dropdown list
  */
 public class SoundBites extends PApplet
 {
-    public static final String VERSION = "2.4.0a";
+    public static final String VERSION = "2.4.1a";
 
     /**
      * Creates an instance of the SoundBites program.
@@ -220,6 +220,29 @@ public class SoundBites extends PApplet
             lstMappers.addItem(ColourMapperEnum.values()[i].toString(), i);
         }
 
+        // Dropdown list for skybox selection
+        yPos += guiSizeY + guiSpacing;
+        int skyboxCount = SkyboxEnum.values().length;
+        lstSkyboxes = gui.addDropdownList("skybox")
+                .setPosition(xPos, yPos + guiSizeY)
+                .setSize(guiMenuW, guiSizeY * (1 + skyboxCount))
+                .setItemHeight(guiSizeY)
+                .setBarHeight(guiSizeY)
+                .addListener(new controlP5.ControlListener()
+        {
+            @Override
+            public void controlEvent(ControlEvent ce)
+            {
+                int iInput = (int) ce.getValue();
+                vars.skybox.set(SkyboxEnum.values()[iInput]); // renderer will do the rest
+            }
+        });
+        lstSkyboxes.getCaptionLabel().getStyle().paddingTop = 5;
+        for ( int i = 0 ; i < skyboxCount ; i++ )
+        {
+            lstSkyboxes.addItem(SkyboxEnum.values()[i].toString(), i);
+        }
+
         // Button for selecting render mode
         yPos += guiSizeY + guiSpacing;
         btnRenderMode = gui.addButton("Render Mode: Solid")
@@ -352,6 +375,7 @@ public class SoundBites extends PApplet
 
         gui.setAutoDraw(false);
         
+        lstSkyboxes.bringToFront();
         lstMappers.bringToFront();
         lstShapers.bringToFront();
     }
@@ -431,11 +455,13 @@ public class SoundBites extends PApplet
         gl.glPopMatrix(); 
         hint(DISABLE_DEPTH_TEST);
         
+        // get live audio input
         if ( spectrumFile == null )
         {
             updateRealtimeSpectrum();
         }
         
+        // draw FPS
         if ( vars.guiEnabled.get() )
         {
             lblFps.setStringValue(String.format("FPS: %.1f", frameRate));
@@ -545,35 +571,8 @@ public class SoundBites extends PApplet
             case 'a' : reportAudioProperties(); break;
             case 'g' : vars.guiEnabled.set(!vars.guiEnabled.get()); break;
             case 'r' : toggleRenderMode(); break;
+            case 's' : toggleSkybox(); break;
         }
-    }
-    
-    
-    /**
-     * Selects the next render mode.
-     */
-    private void toggleRenderMode()
-    {
-        RenderMode mode = vars.renderMode.get();
-        switch ( mode )
-        {
-            case SOLID     : mode = RenderMode.WIREFRAME; break;
-            case WIREFRAME : mode = RenderMode.POINTS; break;
-            default:         mode = RenderMode.SOLID; break;
-        }
-        vars.renderMode.set(mode); // this will automatically call updateRenderMode
-    }
-
-    
-    /**
-     * Called when the render mode has changed.
-     */
-    private void updateRenderMode()
-    {
-        RenderMode mode = vars.renderMode.get();
-        shaper.setRenderMode(mode);
-        btnRenderMode.setCaptionLabel("Render Mode: " + mode);
-        System.out.println("Selected " + mode + " render mode");
     }
     
     
@@ -836,6 +835,42 @@ public class SoundBites extends PApplet
 
     
     /**
+     * Selects the next render mode.
+     */
+    private void toggleRenderMode()
+    {
+        // "calculate" next render mode
+        int mode = vars.renderMode.get().ordinal();
+        mode = (mode + 1) % RenderMode.values().length;
+        vars.renderMode.set(RenderMode.values()[mode]); // this will automatically call updateRenderMode
+    }
+
+    
+    /**
+     * Called when the render mode has changed.
+     */
+    private void updateRenderMode()
+    {
+        RenderMode mode = vars.renderMode.get();
+        shaper.setRenderMode(mode);
+        btnRenderMode.setCaptionLabel("Render Mode: " + mode);
+        System.out.println("Selected " + mode + " render mode");
+    }
+    
+    
+    /**
+     * Selects the next skybox in the list.
+     */
+    private void toggleSkybox()
+    {
+        // "calculate" next skybox
+        int mode = vars.skybox.get().ordinal();
+        mode = (mode + 1) % SkyboxEnum.values().length;
+        vars.skybox.set(SkyboxEnum.values()[mode]); 
+    }
+    
+    
+    /**
      * Checks if the applet should run fullscreen.
      * 
      * @return <code>true</code> if applet should run fullscreen,
@@ -957,7 +992,7 @@ public class SoundBites extends PApplet
     private Textlabel     lblFilename, lblFps;
     private Button        btnRenderMode;
     private Toggle        btnPause, btnSplit;
-    private DropdownList  lstInputs, lstShapers, lstMappers;
+    private DropdownList  lstInputs, lstShapers, lstMappers, lstSkyboxes;
     private Slider        sldVolume;
 
     // GUI spacing and sizes
