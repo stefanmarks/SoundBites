@@ -30,6 +30,7 @@ import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.SocketException;
 import javax.media.opengl.GL2;
 import javax.sound.sampled.FloatControl;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -590,7 +591,13 @@ public class SoundBites extends PApplet
      */
     private void selectSpectrumFile()
     {
-        selectInput("Select the Spectrum file to load", "openSpectrumFile", new File(dataPath(".")));
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle("Select the Spectrum File to load");
+        int choice = fc.showOpenDialog(this);
+        if ( choice == JFileChooser.APPROVE_OPTION ) 
+        {
+            openSpectrumFile(fc.getSelectedFile());
+        }
     }
 
 

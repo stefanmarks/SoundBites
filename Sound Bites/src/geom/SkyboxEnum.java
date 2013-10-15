@@ -10,7 +10,9 @@ public enum SkyboxEnum
 {
     BLACK(    "Black",     null), 
     HEXSPHERE("HexSphere", "SkyboxHexSphere_PoT.jpg"), 
-    PLANE(    "Plane",     "SkyboxGridPlane_PoT.jpg");
+    PLANE(    "Plane",     "SkyboxGridPlane_PoT.jpg"),
+    GREEN(    "Green",     "SkyboxGreen.jpg"),
+    PURPLE(   "Purple",    "SkyboxPurple.jpg");
     
     
     private SkyboxEnum(String name, String resource)
