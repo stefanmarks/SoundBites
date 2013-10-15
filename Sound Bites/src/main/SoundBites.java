@@ -65,10 +65,11 @@ import shaper.ShaperEnum;
  * @version 2.3.7 - 15.09.2013: Added volume controller, refactored audio system, added fullscreen dialog, rearranged GUI
  * @version 2.4.0 - 20.09.2013: Completed migration of central parameters and full remote control
  * @version 2.4.1 - 23.09.2013: Added skybox dropdown list
+ * @version 2.4.2 - 15.10.2013: Fixed broken load dialog. Added green/purple skybox
  */
 public class SoundBites extends PApplet
 {
-    public static final String VERSION = "2.4.1a";
+    public static final String VERSION = "2.4.2a";
 
     /**
      * Creates an instance of the SoundBites program.
