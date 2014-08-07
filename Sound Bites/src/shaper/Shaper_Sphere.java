@@ -24,11 +24,11 @@ public class Shaper_Sphere extends AbstractShaper
     @Override
     public void initialise(ControlP5 gui)
     {
-        sldRadius = gui.addSlider("Radius")
+        sldRadius = gui.addSlider("size").setCaptionLabel("Radius")
                 .setRange(10, 500)
                 .setValue(100);
         controllers.add(sldRadius);
-        sldMultiplier = gui.addSlider("Radius Multiplier")
+        sldMultiplier = gui.addSlider("multiplier").setCaptionLabel("Radius Multiplier")
                 .setRange(0, 10)
                 .setValue(1.5f);
         controllers.add(sldMultiplier);

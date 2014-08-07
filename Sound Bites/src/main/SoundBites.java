@@ -14,7 +14,7 @@ import controlP5.ControlListener;
 import controlP5.ControlP5;
 import controlP5.Controller;
 import controlP5.DropdownList;
-import controlP5.Slider;
+import controlP5.Slider;        
 import controlP5.Textlabel;
 import controlP5.Toggle;
 import ddf.minim.Minim;
@@ -22,8 +22,13 @@ import geom.RenderMode;
 import geom.Skybox;
 import geom.SkyboxEnum;
 import java.awt.Dimension;
+import java.awt.event.KeyEvent;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.Thread.UncaughtExceptionHandler;
@@ -69,8 +74,11 @@ import shaper.ShaperEnum;
  */
 public class SoundBites extends PApplet
 {
-    public static final String VERSION = "2.4.2a";
-
+    public static final String VERSION = "2.5.1";
+    
+    public static final String CONFIG_FILE = "./config.txt";
+    
+    
     /**
      * Creates an instance of the SoundBites program.
      * 
@@ -146,6 +154,12 @@ public class SoundBites extends PApplet
                         
         shaper = null; updateShaper(shaper);
         mapper = null; updateMapper();
+        
+        File configFile = new File(CONFIG_FILE);
+        if ( configFile.exists() )
+        {
+            loadConfiguration();
+        }
     }
     
     
@@ -330,6 +344,7 @@ public class SoundBites extends PApplet
                 {
                     selectAudioInput(audioManager.getInput(iInput));
                 }
+                vars.audioSource.set(iInput);
             }
         });
         // fill dropdown list with entries
@@ -464,7 +479,7 @@ public class SoundBites extends PApplet
         }
         
         // draw FPS
-        if ( vars.guiEnabled.get() )
+        if ( vars.guiControlsEnabled.get() )
         {
             lblFps.setStringValue(String.format("FPS: %.1f", frameRate));
             gui.draw();
@@ -491,19 +506,22 @@ public class SoundBites extends PApplet
                 // enable the surface to recalculate changed normals
             }
             
-            // draw live spectrum
-            pushStyle();
-            strokeWeight(2);
-            for ( int i = 0 ; i < len ; i++ )
+            if ( vars.guiSpectrumEnabled.get() )
             {
-                int x = width - guiSpacing - (len - i) * 2;
-                int y = height - guiSpacing;
-                int h = (int) (info.intensity[i] * 100);
-                int colour = mapper.mapSpectrum(info.intensity, i);
-                stroke((colour >> 16) & 0xFF, (colour >> 8) & 0xFF, colour & 0xFF, 255);
-                line(x, y, x, y-h);
+                // draw live spectrum
+                pushStyle();
+                strokeWeight(2);
+                for ( int i = 0 ; i < len ; i++ )
+                {
+                    int x = width - guiSpacing - (len - i) * 2;
+                    int y = height - guiSpacing;
+                    int h = (int) (info.intensity[i] * 100);
+                    int colour = mapper.mapSpectrum(info.intensity, i);
+                    stroke((colour >> 16) & 0xFF, (colour >> 8) & 0xFF, colour & 0xFF, 255);
+                    line(x, y, x, y-h);
+                }
+                popStyle();
             }
-            popStyle();
         }
     }
     
@@ -568,12 +586,25 @@ public class SoundBites extends PApplet
     @Override
     public void keyPressed()
     {
-        switch ( key )
+        if ( key != CODED )
         {
-            case 'a' : reportAudioProperties(); break;
-            case 'g' : vars.guiEnabled.set(!vars.guiEnabled.get()); break;
-            case 'r' : toggleRenderMode(); break;
-            case 's' : toggleSkybox(); break;
+            // plain keypress
+            switch ( key )
+            {
+                case 'a' : reportAudioProperties(); break;
+                case 'g' : toggleGuiVisibility(); break;
+                case 'r' : toggleRenderMode(); break;
+                case 's' : toggleSkybox(); break;
+            }
+        }
+        else
+        {
+            // special key
+            switch ( keyCode )
+            {
+                case KeyEvent.VK_F5 : saveConfiguration(); break;
+                case KeyEvent.VK_F9 : loadConfiguration(); break;
+            }
         }
     }
     
@@ -786,46 +817,6 @@ public class SoundBites extends PApplet
         lstMappers.setCaptionLabel("Mapper: " + mapper.toString());
         System.out.println("Selected Mapper: " + mapper.toString());
     }
-    
-    
-    /**
-     * Selects plain colour mapping.
-     */
-    private void selectPlainMapping()
-    {
-//        Color c = JColorChooser.showDialog(frame, "Select Colour", mapperPlain.getColour());
-//        if ( c != null )
-//        {
-//            mapperPlain = new PlainColourMapper(c);
-//            shaper.setColourMapper(mapperPlain);
-//        }
-    }
-    
-    
-    /**
-     * Selects image pattern mapping.
-     */
-    private void selectPatternMapping()
-    {
-//        FileDialog fc = new FileDialog(frame, "Select Image", FileDialog.LOAD);
-//        fc.setVisible(true);
-//        String f = fc.getFile();
-//        if ( f != null )
-//        {
-//            try
-//            {
-//                mapper = new ImageColourMapper(new File(fc.getDirectory(), f));
-//                shaper.setColourMapper(mapper);
-//            }
-//            catch (IOException e)
-//            {
-//                JOptionPane.showMessageDialog(frame, 
-//                        "Could not load image.\n" + e.getMessage(),
-//                        "Error",
-//                        JOptionPane.ERROR_MESSAGE);
-//            }
-//        }
-    }
 
     
     /**
@@ -875,6 +866,88 @@ public class SoundBites extends PApplet
         int mode = vars.skybox.get().ordinal();
         mode = (mode + 1) % SkyboxEnum.values().length;
         vars.skybox.set(SkyboxEnum.values()[mode]); 
+    }
+    
+    
+    /**
+     * Switches GUI controls on and off
+     */
+    private void toggleGuiVisibility()
+    {
+        boolean c = vars.guiControlsEnabled.get();
+        boolean s = vars.guiSpectrumEnabled.get();
+        if      ( !c && !s ) { c = false; s = true; }
+        else if ( !c &&  s ) { c =  true; s = true; }
+        else                 { c = false; s = false; }
+        vars.guiControlsEnabled.set(c);
+        vars.guiSpectrumEnabled.set(s);
+        updateMouseCursor();
+    }
+    
+    
+    private void updateMouseCursor()
+    {
+        if ( vars.guiControlsEnabled.get() )
+        {
+            cursor(ARROW);
+        }
+        else
+        {
+            noCursor();
+        }
+    }
+    
+    
+    /**
+     * Saves all parameters to a configuration file.
+     */
+    private void saveConfiguration()
+    {
+        for (Controller c : shaper.getControllers())
+        {
+            OSCParameter param = vars.findShaperVar(c.getName());
+            if ( param != null ) { param.set(c.getValue()); }
+        }
+
+        try 
+        {
+            PrintStream p = new PrintStream(CONFIG_FILE);
+            vars.writeToStream(p);
+            p.close();
+        }
+        catch (FileNotFoundException e)
+        {
+            System.err.println(e);
+        }
+    }
+    
+    
+    /**
+     * Loads all parameters from a configuration file.
+     */
+    private void loadConfiguration()
+    {
+        try
+        {
+            InputStream in = new FileInputStream(CONFIG_FILE);
+            vars.readFromStream(in);
+            in.close();
+            
+            updateShaper(shaper);
+            for (Controller c : shaper.getControllers())
+            {
+                OSCParameter param = vars.findShaperVar(c.getName());
+                if ( param != null ) { c.setValue(((Number) param.get()).floatValue()); }
+            }
+            
+            updateMapper();
+            selectAudioInput(audioManager.getInput(vars.audioSource.get()));
+            updateMouseCursor();
+        }
+        catch (IOException e)
+        {
+            System.err.println(e);
+        }
     }
     
     
@@ -930,7 +1003,24 @@ public class SoundBites extends PApplet
     public static void main(String[] args)
     {
         // create program instance
-        final SoundBites p = new SoundBites(checkFullscreen());
+        
+        // check command line parameters
+        boolean fullscreen = false;
+        for ( String arg : args )
+        {
+            if ( arg.equalsIgnoreCase("-f") ) 
+            {
+                fullscreen = true; 
+            }
+        }
+        
+        if ( !fullscreen )
+        {
+            // no command line option given -> ask user
+            fullscreen = checkFullscreen(); 
+        }
+        
+        final SoundBites p = new SoundBites(fullscreen);
 
         // in case of an exception, show a swing dialog box
         Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
@@ -990,6 +1080,7 @@ public class SoundBites extends PApplet
         }
     }
     
+   
     // and the static listener instance 
     final RecalculateListener RECALC_LISTENER = new RecalculateListener();
     

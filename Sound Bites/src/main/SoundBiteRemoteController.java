@@ -64,6 +64,8 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         javax.swing.JPanel pnlGUI = new javax.swing.JPanel();
         javax.swing.JLabel lblGuiVisible = new javax.swing.JLabel();
         btnGuiVisible = new javax.swing.JToggleButton();
+        javax.swing.JLabel lblSpectrumVisible = new javax.swing.JLabel();
+        btnSpectrumVisible = new javax.swing.JToggleButton();
         javax.swing.JPanel pnlRendering = new javax.swing.JPanel();
         javax.swing.JLabel lblShaper = new javax.swing.JLabel();
         cbxShaper = new javax.swing.JComboBox();
@@ -151,6 +153,38 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         gridBagConstraints.weightx = 10.0;
         pnlGUI.add(btnGuiVisible, gridBagConstraints);
+
+        lblSpectrumVisible.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        lblSpectrumVisible.setLabelFor(btnSpectrumVisible);
+        lblSpectrumVisible.setText("Spectrum visibility:");
+        lblSpectrumVisible.setMinimumSize(new java.awt.Dimension(100, 14));
+        lblSpectrumVisible.setPreferredSize(new java.awt.Dimension(100, 14));
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 10);
+        pnlGUI.add(lblSpectrumVisible, gridBagConstraints);
+
+        btnSpectrumVisible.setSelected(true);
+        btnSpectrumVisible.setText("Visible");
+        btnSpectrumVisible.setMinimumSize(new java.awt.Dimension(50, 20));
+        btnSpectrumVisible.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                btnSpectrumVisibleActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.weightx = 10.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
+        pnlGUI.add(btnSpectrumVisible, gridBagConstraints);
 
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
@@ -475,7 +509,7 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     {//GEN-HEADEREND:event_btnGuiVisibleActionPerformed
         boolean visible = btnGuiVisible.isSelected();
         btnGuiVisible.setText(visible ? "Visible" : "Hidden");
-        vars.guiEnabled.set(visible);
+        vars.guiControlsEnabled.set(visible);
         sendUpdate();
     }//GEN-LAST:event_btnGuiVisibleActionPerformed
 
@@ -493,6 +527,15 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
         btnAudioRecording.setText(paused ? "Recording" : "Paused");
         sendUpdate();
     }//GEN-LAST:event_btnAudioRecordingActionPerformed
+
+    
+    private void btnSpectrumVisibleActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_btnSpectrumVisibleActionPerformed
+    {//GEN-HEADEREND:event_btnSpectrumVisibleActionPerformed
+        boolean visible = btnSpectrumVisible.isSelected();
+        btnSpectrumVisible.setText(visible ? "Visible" : "Hidden");
+        vars.guiSpectrumEnabled.set(visible);
+        sendUpdate();
+    }//GEN-LAST:event_btnSpectrumVisibleActionPerformed
 
     
     /**
@@ -556,6 +599,7 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     private javax.swing.JToggleButton btnCameraAutoRotate;
     private javax.swing.JToggleButton btnGuiVisible;
     private javax.swing.JButton btnRemove;
+    private javax.swing.JToggleButton btnSpectrumVisible;
     private javax.swing.JComboBox cbxMapper;
     private javax.swing.JComboBox cbxRenderMode;
     private javax.swing.JComboBox cbxShaper;
@@ -564,10 +608,10 @@ public class SoundBiteRemoteController extends javax.swing.JFrame
     private javax.swing.JPanel pnlSlaveButtons;
     // End of variables declaration//GEN-END:variables
 
-    private DefaultListModel<Slave>  slaves;
-    private SoundBiteVariables       vars;
-    private Timer                    animationTimer;
-    private CameraRotationTask       cameraAnimation;
+    private final DefaultListModel<Slave>  slaves;
+    private final SoundBiteVariables       vars;
+    private final Timer                    animationTimer;
+    private final CameraRotationTask       cameraAnimation;
     
     /**
      * Class for encapsulating slaves, their state, and the output for the list model.

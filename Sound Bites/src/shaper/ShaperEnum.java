@@ -32,5 +32,6 @@ public enum ShaperEnum
         return shaper;
     }
     
-    private Shaper shaper;
+    
+    private final Shaper shaper;
 }
