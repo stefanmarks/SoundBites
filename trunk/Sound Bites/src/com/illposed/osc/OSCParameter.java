@@ -21,6 +21,16 @@ public class OSCParameter<Type> implements OSCListener
         this.listeners = new LinkedList<OSCParameterListener<Type>>();
     }
 
+    public String getAddress()
+    {
+        return address;
+    }
+    
+    public Class getType()
+    {
+        return value.getClass();
+    }
+    
     public void registerWithPort(OSCPortIn port)
     {
         port.addListener(address, this);
@@ -53,6 +63,53 @@ public class OSCParameter<Type> implements OSCListener
         return message;
     }
     
+    public String valueToString()
+    {
+        String output = value.toString();
+        if ( value instanceof PVector )
+        {
+            PVector v = (PVector) value;
+            output = v.x + "," + v.y + "," + v.z;
+        }
+        else if ( value instanceof Enum )
+        {
+           output = ((Enum) value).name();
+        }
+        return output;
+    }
+    
+    public void valueFromString(String in)
+    {
+        if ( value instanceof PVector )
+        {
+            PVector v = (PVector) value;
+            String[] parts = in.split(",");
+            if ( parts.length > 0 ) { v.x = Float.parseFloat(parts[0]); }
+            if ( parts.length > 1 ) { v.y = Float.parseFloat(parts[1]); }
+            if ( parts.length > 2 ) { v.z = Float.parseFloat(parts[2]); }
+        }
+        else if ( value instanceof Enum )
+        {
+           value = (Type) Enum.valueOf(getType(), in);
+        }
+        else if ( value instanceof Integer )
+        {
+            value = (Type) ((Integer) Integer.parseInt(in));
+        }
+        else if ( value instanceof Float )
+        {
+            value = (Type) ((Float) Float.parseFloat(in));
+        }
+        else if ( value instanceof Boolean )
+        {
+            value = (Type) ((Boolean) Boolean.parseBoolean(in));
+        }
+        else
+        {
+            System.err.println("parse err");
+        }
+    }
+
     public Type get()
     {
         return value;
@@ -125,8 +182,8 @@ public class OSCParameter<Type> implements OSCListener
         }
     }
     
-    private String                           address;
-    private Type                             value;
-    private boolean                          changed;
-    private List<OSCParameterListener<Type>> listeners;
+    private final String                           address;
+    private       Type                             value;
+    private       boolean                          changed;
+    private final List<OSCParameterListener<Type>> listeners;
 }

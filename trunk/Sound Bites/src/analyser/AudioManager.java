@@ -141,6 +141,8 @@ public class AudioManager
     
     /**
      * Method for reporting audio capabilities.
+     *
+     * @return audio capabilities as a string
      */
     public String reportAudioCapabilities()
     {
