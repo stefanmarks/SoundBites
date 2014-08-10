@@ -13,7 +13,8 @@ public enum ColourMapperEnum
     WHITE(new PlainColourMapper("White", Color.white)),
     BROWN(new PlainColourMapper("Brown", Color.decode("#603000"))),
     GREYSCALE(ImageColourMapper.create("Greyscale", "GreyMap.png")),
-    TRANSPARENT(ImageColourMapper.create("Transparent", "TransparentMap.png")),
+    TRANSPARENT1(ImageColourMapper.create("Transparent 1", "TransparentMap1.png")),
+    TRANSPARENT2(ImageColourMapper.create("Transparent 2", "TransparentMap2.png")),
     SPECTRUM(ImageColourMapper.create("Spectrum", "SpectrumMap.png")),
     FIRE(ImageColourMapper.create("Fire", "FireMap.png")),
     ICE(ImageColourMapper.create("Ice", "IceMap.png"));

@@ -75,6 +75,10 @@ public class OSCParameter<Type> implements OSCListener
         {
            output = ((Enum) value).name();
         }
+        else if ( value instanceof Integer )
+        {
+           output = ((Integer) value).toString();
+        }
         return output;
     }
     
@@ -94,7 +98,14 @@ public class OSCParameter<Type> implements OSCListener
         }
         else if ( value instanceof Integer )
         {
-            value = (Type) ((Integer) Integer.parseInt(in));
+            try
+            {
+                value = (Type) ((Integer) Integer.parseInt(in));
+            }
+            catch (NumberFormatException e)
+            {
+                value = (Type) ((Integer) ((Float) Float.parseFloat(in)).intValue());
+            }
         }
         else if ( value instanceof Float )
         {
