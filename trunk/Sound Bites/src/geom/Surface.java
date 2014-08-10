@@ -263,15 +263,18 @@ public class Surface
         public void render(GL2 gl)
         {
             gl.glNormal3f(n.x, n.y, n.z);
-            int colour = colours[idx1];
+            int  colour = colours[idx1];
+            PVector vec = vertices[idx1];
             gl.glColor4ub((byte) ((colour >> 16) & 0xFF), (byte) ((colour >> 8) & 0xFF), (byte) (colour & 0xFF), (byte) ((colour >> 24) & 0xFF));
-            gl.glVertex3f(vertices[idx1].x, vertices[idx1].y, vertices[idx1].z);
+            gl.glVertex3f(vec.x, vec.y, vec.z);
             colour = colours[idx2];
+            vec    = vertices[idx2];
             gl.glColor4ub((byte) ((colour >> 16) & 0xFF), (byte) ((colour >> 8) & 0xFF), (byte) (colour & 0xFF), (byte) ((colour >> 24) & 0xFF));
-            gl.glVertex3f(vertices[idx2].x, vertices[idx2].y, vertices[idx2].z);
+            gl.glVertex3f(vec.x, vec.y, vec.z);
             colour = colours[idx3];
+            vec    = vertices[idx3];
             gl.glColor4ub((byte) ((colour >> 16) & 0xFF), (byte) ((colour >> 8) & 0xFF), (byte) (colour & 0xFF), (byte) ((colour >> 24) & 0xFF));
-            gl.glVertex3f(vertices[idx3].x, vertices[idx3].y, vertices[idx3].z);
+            gl.glVertex3f(vec.x, vec.y, vec.z);
         }
 
         @Override
@@ -286,7 +289,7 @@ public class Surface
             w.println("endfacet");
         }
         
-        private int idx1, idx2, idx3;
+        private final int idx1, idx2, idx3;
         private PVector n;
     }
 
