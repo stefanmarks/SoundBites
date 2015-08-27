@@ -44,6 +44,7 @@ import static processing.core.PConstants.DISABLE_DEPTH_TEST;
 import static processing.core.PConstants.ENABLE_DEPTH_TEST;
 import processing.core.PVector;
 import processing.event.MouseEvent;
+import processing.opengl.PJOGL;
 import shaper.ColourMapper;
 import shaper.ColourMapperEnum;
 import shaper.Shaper;
@@ -54,27 +55,10 @@ import shaper.ShaperEnum;
  * This project was created in collaboration with Gerbrand <G> van Melle.
  * 
  * @author Stefan Marks
- * @version 1.0   - 30.05.2013: Created
- * @version 1.1   - 08.06.2013: Switched to OpenGL rendering
- * @version 2.0   - 10.08.2013: Refactored shaper modules and parameter GUI
- * @version 2.1   - 20.08.2013: Refactored surface class
- * @version 2.2.1 - 22.08.2013: Added colour mapping
- * @version 2.2.2 - 27.08.2013: Added realtime recording
- * @version 2.2.3 - 04.09.2013: Added pause button
- * @version 2.3.1 - 04.09.2013: Switched rendering to OpenGL 2
- * @version 2.3.2 - 05.09.2013: Added skyboxes and the cylinder shaper
- * @version 2.3.3 - 09.09.2013: Added split mode
- * @version 2.3.4 - 13.09.2013: Moved skyboxes into JAR, renamed project to SoundBites
- * @version 2.3.5 - 13.09.2013: Added complete removal of GUI
- * @version 2.3.6 - 13.09.2013: Added zoom and OSC support. 
- * @version 2.3.7 - 15.09.2013: Added volume controller, refactored audio system, added fullscreen dialog, rearranged GUI
- * @version 2.4.0 - 20.09.2013: Completed migration of central parameters and full remote control
- * @version 2.4.1 - 23.09.2013: Added skybox dropdown list
- * @version 2.4.2 - 15.10.2013: Fixed broken load dialog. Added green/purple skybox
- */
+  */
 public class SoundBites extends PApplet
 {
-    public static final String VERSION = "2.5.1";
+    public static final String VERSION = "2.5.2";
     
     public static final String CONFIG_FILE = "./config.txt";
     
@@ -313,7 +297,7 @@ public class SoundBites extends PApplet
             {
                 if (e.getAction() == ControlP5.ACTION_PRESSED)
                 {
-                    vars.audioRecording.set(!vars.audioRecording.get());
+                    togglePause();
                 }
             }
         });
@@ -414,7 +398,7 @@ public class SoundBites extends PApplet
 
         hint(ENABLE_DEPTH_TEST);
         
-        GL2 gl = beginPGL().gl.getGL2();
+        GL2 gl = ((PJOGL) beginPGL()).gl.getGL2();
 
         // revert the Processing version of the projection matrix to Standard OpenGL
         gl.glMatrixMode(GL2.GL_PROJECTION);
@@ -595,6 +579,7 @@ public class SoundBites extends PApplet
                 case 'g' : toggleGuiVisibility(); break;
                 case 'r' : toggleRenderMode(); break;
                 case 's' : toggleSkybox(); break;
+                case ' ' : togglePause(); break;
             }
         }
         else
@@ -692,15 +677,21 @@ public class SoundBites extends PApplet
      */
     private void saveStlFile()
     {
-        if ( spectrumFile == null )
+        String filename;
+        
+        if ( spectrumFile != null )
         {
-            return;
+            filename = spectrumFile + ".stl";
+        }
+        else
+        {
+            filename = "Recording.stl";
         }
 
         PrintWriter w;
         try
         {
-            w = new PrintWriter(new File(spectrumFile + ".stl"));
+            w = new PrintWriter(new File(filename));
         }
         catch (FileNotFoundException e)
         {
@@ -882,6 +873,15 @@ public class SoundBites extends PApplet
         vars.guiControlsEnabled.set(c);
         vars.guiSpectrumEnabled.set(s);
         updateMouseCursor();
+    }
+    
+    
+    /**
+     * Toggles pause of recording/animating
+     */
+    private void togglePause()
+    {
+        vars.audioRecording.set(!vars.audioRecording.get());
     }
     
     
