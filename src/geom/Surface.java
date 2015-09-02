@@ -226,14 +226,14 @@ public class Surface
         gl.glEnd();
     }
 
-    public void writeSTL(PrintWriter w)
+    public void writeSTL(PrintWriter w, float scale)
     {
         // write header
         w.println("solid Surface");
         // draw the surface
         for ( Face f : faces)
         {
-            f.writeSTL(w);
+            f.writeSTL(w, scale);
         }
         // finish file
         w.println("endsolid");
@@ -278,13 +278,13 @@ public class Surface
         }
 
         @Override
-        public void writeSTL(PrintWriter w)
+        public void writeSTL(PrintWriter w, float scale)
         {
             w.println("facet normal " + n.x + " " + n.y + " " + n.z);
             w.println("outer loop");
-            w.println("vertex " + vertices[idx1].x + " " + vertices[idx1].y + " " + vertices[idx1].z);
-            w.println("vertex " + vertices[idx2].x + " " + vertices[idx2].y + " " + vertices[idx2].z);
-            w.println("vertex " + vertices[idx3].x + " " + vertices[idx3].y + " " + vertices[idx3].z);
+            w.println("vertex " + vertices[idx1].x * scale + " " + vertices[idx1].y * scale + " " + vertices[idx1].z * scale);
+            w.println("vertex " + vertices[idx2].x * scale + " " + vertices[idx2].y * scale + " " + vertices[idx2].z * scale);
+            w.println("vertex " + vertices[idx3].x * scale + " " + vertices[idx3].y * scale + " " + vertices[idx3].z * scale);
             w.println("endloop");
             w.println("endfacet");
         }

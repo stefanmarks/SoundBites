@@ -13,5 +13,5 @@ public interface Face
 {
     public void update();
     public void render(GL2 gl);
-    public void writeSTL(PrintWriter w);
+    public void writeSTL(PrintWriter w, float scale);
 }

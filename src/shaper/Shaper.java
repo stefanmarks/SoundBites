@@ -32,5 +32,5 @@ public interface Shaper
     void setRenderMode(RenderMode mode);
     void setSplitMode(boolean split);
     
-    void writeSTL(PrintWriter w);
+    void writeSTL(PrintWriter w, float scale);
 }

@@ -111,16 +111,16 @@ public abstract class AbstractShaper implements Shaper
 
     
     @Override
-    public void writeSTL(PrintWriter w)
+    public void writeSTL(PrintWriter w, float scale)
     {
         if ( splitMode )
         {
-            splitSurf1.writeSTL(w);
-            splitSurf2.writeSTL(w);
+            splitSurf1.writeSTL(w, scale);
+            splitSurf2.writeSTL(w, scale);
         }
         else
         {
-            surface.writeSTL(w);
+            surface.writeSTL(w, scale);
         }
     }
 

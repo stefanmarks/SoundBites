@@ -115,6 +115,7 @@ public class Skybox
         // Restore enable bits and matrix
         gl.glPopAttrib();
         gl.glPopMatrix();
+        gl.glDisable(GL2.GL_TEXTURE_2D);
     }
     
     private void renderRect(GL2 gl, int idx)

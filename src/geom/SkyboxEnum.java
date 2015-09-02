@@ -34,6 +34,7 @@ public enum SkyboxEnum
         return skybox;
     }
     
-    private String name;
-    private Skybox skybox;
+    
+    private final String name;
+    private final Skybox skybox;
 }

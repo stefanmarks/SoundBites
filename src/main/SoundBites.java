@@ -33,6 +33,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.SocketException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import javax.media.opengl.GL2;
 import javax.sound.sampled.FloatControl;
 import javax.swing.JFileChooser;
@@ -58,7 +60,7 @@ import shaper.ShaperEnum;
   */
 public class SoundBites extends PApplet
 {
-    public static final String VERSION = "2.5.2";
+    public static final String VERSION = "2.5.3";
     
     public static final String CONFIG_FILE = "./config.txt";
     
@@ -144,6 +146,8 @@ public class SoundBites extends PApplet
         {
             loadConfiguration();
         }
+        
+        saveRequested = false;
     }
     
     
@@ -280,7 +284,7 @@ public class SoundBites extends PApplet
             {
                 if (e.getAction() == ControlP5.ACTION_PRESSED)
                 {
-                    saveStlFile();
+                    saveRequested = true;
                 }
             }
         });
@@ -468,6 +472,12 @@ public class SoundBites extends PApplet
             lblFps.setStringValue(String.format("FPS: %.1f", frameRate));
             gui.draw();
         }
+        
+        if ( saveRequested )
+        {
+            saveRequested = false;
+            saveStlFile();
+        }
     }
 
     
@@ -566,31 +576,37 @@ public class SoundBites extends PApplet
     
     /**
      * Called when a key is pressed
+     * 
+     * @param evt  key event information
      */
     @Override
-    public void keyPressed()
+    public synchronized void keyPressed(KeyEvent evt)
     {
-        if ( key != CODED )
+        if ( evt.isControlDown() )
         {
-            // plain keypress
-            switch ( key )
+            // CTRL-keypress
+            switch ( evt.getKeyCode() )
             {
-                case 'a' : reportAudioProperties(); break;
-                case 'g' : toggleGuiVisibility(); break;
-                case 'r' : toggleRenderMode(); break;
-                case 's' : toggleSkybox(); break;
-                case ' ' : togglePause(); break;
+                case KeyEvent.VK_A : reportAudioProperties(); break;
+                case KeyEvent.VK_G : toggleGuiVisibility(); break;
+                case KeyEvent.VK_R : toggleRenderMode(); break;
+                case KeyEvent.VK_S : toggleSkybox(); break;
             }
         }
-        else
-        {
+        else 
+        {   
             // special key
-            switch ( keyCode )
+            switch ( evt.getKeyCode() )
             {
                 case KeyEvent.VK_F5 : saveConfiguration(); break;
                 case KeyEvent.VK_F9 : loadConfiguration(); break;
+
+                case KeyEvent.VK_SPACE : togglePause(); break;
+                case KeyEvent.VK_ENTER : saveRequested = true; break;
             }
         }
+        
+        super.keyPressed(evt);
     }
     
     
@@ -673,6 +689,17 @@ public class SoundBites extends PApplet
     
     
     /**
+     * Returns a timestamp for filename enumeration.
+     * 
+     * @return the timestamp string
+     */
+    private String getTimestamp()
+    {
+        return new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+    }
+    
+    
+    /**
      * Saves the 3D shape as an STL file.
      */
     private void saveStlFile()
@@ -681,17 +708,20 @@ public class SoundBites extends PApplet
         
         if ( spectrumFile != null )
         {
-            filename = spectrumFile + ".stl";
+            filename = spectrumFile.getName();
         }
         else
         {
-            filename = "Recording.stl";
+            filename = "Recording_" + getTimestamp();
+            
+            // live recording > save screenshot to identify STL file later
+            save(filename + ".jpg");
         }
 
         PrintWriter w;
         try
         {
-            w = new PrintWriter(new File(filename));
+            w = new PrintWriter(new File(filename + ".stl"));
         }
         catch (FileNotFoundException e)
         {
@@ -699,7 +729,7 @@ public class SoundBites extends PApplet
             return;
         }
         
-        shaper.writeSTL(w);
+        shaper.writeSTL(w, 0.001f);
         w.close();
     }
     
@@ -1114,7 +1144,8 @@ public class SoundBites extends PApplet
     private long        recomputeTime;
     // some flags
     private boolean     dragToRotate;
-
+    private boolean     saveRequested;
+            
     // live audio input
     private AudioManager      audioManager;
     private int               inputIdx;
