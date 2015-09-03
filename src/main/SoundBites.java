@@ -708,16 +708,16 @@ public class SoundBites extends PApplet
         
         if ( spectrumFile != null )
         {
-            filename = spectrumFile.getName();
+            filename = spectrumFile.getAbsolutePath();
         }
         else
         {
             filename = "Recording_" + getTimestamp();
-            
             // live recording > save screenshot to identify STL file later
-            save(filename + ".jpg");
         }
 
+        save(filename + ".png");
+        
         PrintWriter w;
         try
         {
