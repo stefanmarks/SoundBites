@@ -624,8 +624,9 @@ public class SoundBites extends PApplet
      */
     private void selectSpectrumFile()
     {
-        JFileChooser fc = new JFileChooser();
+        JFileChooser fc = new JFileChooser(new File("."));
         fc.setDialogTitle("Select the Spectrum File to load");
+        
         int choice = fc.showOpenDialog(this);
         if ( choice == JFileChooser.APPROVE_OPTION ) 
         {
