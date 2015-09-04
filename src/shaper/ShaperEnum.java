@@ -11,7 +11,8 @@ public enum ShaperEnum
     RING1(   new Shaper_Ring()),
     RING2(   new Shaper_RingOld()),
     SPHERE(  new Shaper_Sphere()),
-    CYLINDER(new Shaper_Cylinder());
+    CYLINDER(new Shaper_Cylinder()),
+    PLANE(   new Shaper_Plane());
 
     
     private ShaperEnum(Shaper shaper)
