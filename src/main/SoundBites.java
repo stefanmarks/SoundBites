@@ -60,7 +60,7 @@ import shaper.ShaperEnum;
   */
 public class SoundBites extends PApplet
 {
-    public static final String VERSION = "2.5.3";
+    public static final String VERSION = "2.5.4";
     
     public static final String CONFIG_FILE = "./config.txt";
     
@@ -272,9 +272,9 @@ public class SoundBites extends PApplet
                 ;
         btnSplit.getCaptionLabel().setPadding(5, -14);
         
-        // Button for saving shape as STL
+        // Button for saving shape
         yPos += guiSizeY + guiSpacing;
-        gui.addButton("Save STL")
+        gui.addButton("Save")
                 .setPosition(xPos, yPos)
                 .setSize(guiMenuW, guiSizeY)
                 .addCallback(new controlP5.CallbackListener()
@@ -476,7 +476,7 @@ public class SoundBites extends PApplet
         if ( saveRequested )
         {
             saveRequested = false;
-            saveStlFile();
+            saveToFiles();
         }
     }
 
@@ -701,9 +701,9 @@ public class SoundBites extends PApplet
     
     
     /**
-     * Saves the 3D shape as an STL file.
+     * Saves the 3D shape as an STL, OBJ, and PNG file.
      */
-    private void saveStlFile()
+    private void saveToFiles()
     {
         String filename;
         
@@ -719,19 +719,30 @@ public class SoundBites extends PApplet
 
         save(filename + ".png");
         
-        PrintWriter w;
         try
         {
+            PrintWriter w;
             w = new PrintWriter(new File(filename + ".stl"));
+            shaper.writeSTL(w, 0.001f);
+            w.close();
         }
         catch (FileNotFoundException e)
         {
             System.err.println("Could not write STL file (" + e + ").");
-            return;
         }
         
-        shaper.writeSTL(w, 0.001f);
-        w.close();
+        try
+        {
+            PrintWriter w;
+            w = new PrintWriter(new File(filename + ".obj"));
+            shaper.writeOBJ(w, 0.001f);
+            w.close();
+        }
+        catch (FileNotFoundException e)
+        {
+            System.err.println("Could not write OBJ file (" + e + ").");
+            return;
+        }
     }
     
     

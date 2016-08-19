@@ -126,6 +126,21 @@ public abstract class AbstractShaper implements Shaper
 
     
     @Override
+    public void writeOBJ(PrintWriter w, float scale)
+    {
+        if ( splitMode )
+        {
+            splitSurf1.writeOBJ(w, scale);
+            splitSurf2.writeOBJ(w, scale);
+        }
+        else
+        {
+            surface.writeOBJ(w, scale);
+        }
+    }
+    
+    
+    @Override
     public String toString()
     {
         return name;

@@ -239,6 +239,21 @@ public class Surface
         w.println("endsolid");
     }
     
+    public void writeOBJ(PrintWriter w, float scale)
+    {
+        // write vertices
+        for ( PVector v : vertices )
+        {
+            w.println("v " + v.x*scale + " " + v.y*scale + " " + v.z*scale);
+        }
+        w.println();
+        
+        for ( Face f : faces)
+        {
+            f.writeOBJ(w, scale);
+        }
+    }
+    
     private class Triangle implements Face
     {
         public Triangle(int idx1, int idx2, int idx3, PVector n)
@@ -287,6 +302,12 @@ public class Surface
             w.println("vertex " + vertices[idx3].x * scale + " " + vertices[idx3].y * scale + " " + vertices[idx3].z * scale);
             w.println("endloop");
             w.println("endfacet");
+        }
+        
+        @Override
+        public void writeOBJ(PrintWriter w, float scale)
+        {
+            w.println("f " + (idx3+1) + " " + (idx2+1) + " " + (idx1+1));
         }
         
         private final int idx1, idx2, idx3;
